@@ -5,14 +5,18 @@ variants across multiple years and saves output to frontend/public/data/
 as CSV files.
 
 Uses subprocess isolation per year to prevent memory accumulation.
+Caches each year's results to disk so interrupted runs resume where they
+left off. Use --fresh to ignore the cache and recompute everything.
 
 Usage:
-    python scripts/pipeline.py
+    python scripts/pipeline.py           # resumes from cache
+    python scripts/pipeline.py --fresh   # recomputes everything
 """
 
 import gc
 import json
 import os
+import shutil
 import subprocess
 import sys
 
@@ -25,6 +29,11 @@ DEFAULT_OUTPUT_DIR = os.path.join(
     "frontend",
     "public",
     "data",
+)
+
+CACHE_DIR = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    ".cache",
 )
 
 YEARS = list(range(2026, 2036))
@@ -41,6 +50,27 @@ def _save_csv(df: pd.DataFrame, path: str) -> None:
     os.makedirs(os.path.dirname(path), exist_ok=True)
     df.to_csv(path, index=False)
     print(f"Saved: {path}")
+
+
+def _cache_path(year: int) -> str:
+    return os.path.join(CACHE_DIR, f"year_{year}.json")
+
+
+def _load_cached(year: int) -> dict | None:
+    """Load cached result for a year, or None if not cached."""
+    path = _cache_path(year)
+    if os.path.exists(path):
+        with open(path) as f:
+            return json.load(f)
+    return None
+
+
+def _save_cache(year: int, result: dict) -> None:
+    """Save a year's result to the cache."""
+    os.makedirs(CACHE_DIR, exist_ok=True)
+    path = _cache_path(year)
+    with open(path, "w") as f:
+        json.dump(result, f)
 
 
 def _extract_distributional(
@@ -219,10 +249,20 @@ def _run_year_subprocess(year: int) -> dict:
 
 
 def generate_all_data(
-    output_dir: str = None, use_subprocess: bool = True
+    output_dir: str = None,
+    use_subprocess: bool = True,
+    fresh: bool = False,
 ) -> dict[str, pd.DataFrame]:
-    """Generate all dashboard data as CSVs for all years and variants."""
+    """Generate all dashboard data as CSVs for all years and variants.
+
+    Caches each year's raw results to scripts/.cache/ so interrupted
+    runs can resume. Pass fresh=True to clear the cache and recompute.
+    """
     output_dir = output_dir or DEFAULT_OUTPUT_DIR
+
+    if fresh and os.path.exists(CACHE_DIR):
+        shutil.rmtree(CACHE_DIR)
+        print("Cleared cache.")
 
     all_distributional = []
     all_metrics = []
@@ -230,12 +270,21 @@ def generate_all_data(
     all_income_brackets = []
 
     for i, year in enumerate(YEARS):
-        print(f"\n[{i + 1}/{len(YEARS)}] Year {year}...")
+        print(f"\n[{i + 1}/{len(YEARS)}] Year {year}...", end="")
 
-        if use_subprocess:
-            year_results = _run_year_subprocess(year)
+        cached = _load_cached(year)
+        if cached is not None:
+            print(" (cached)")
+            year_results = cached
         else:
-            year_results = _run_year_in_process(year)
+            print()
+            if use_subprocess:
+                year_results = _run_year_subprocess(year)
+            else:
+                year_results = _run_year_in_process(year)
+
+            _save_cache(year, year_results)
+            print(f"  Year {year} complete (cached for resume).")
 
         for variant, result in year_results.items():
             all_distributional.extend(
@@ -249,8 +298,6 @@ def generate_all_data(
                 _extract_income_brackets(result, variant, year)
             )
 
-        print(f"  Year {year} complete.")
-
     results = {
         "distributional_impact": pd.DataFrame(all_distributional),
         "metrics": pd.DataFrame(all_metrics),
@@ -262,8 +309,12 @@ def generate_all_data(
         _save_csv(df, os.path.join(output_dir, f"{name}.csv"))
 
     print(f"\nAll data saved to {output_dir}/")
+    print(
+        f"Cache at {CACHE_DIR}/ — delete it or run with --fresh to recompute."
+    )
     return results
 
 
 if __name__ == "__main__":
-    generate_all_data()
+    fresh = "--fresh" in sys.argv
+    generate_all_data(fresh=fresh)
