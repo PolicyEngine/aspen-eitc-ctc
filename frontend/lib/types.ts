@@ -6,6 +6,7 @@ export interface HouseholdRequest {
   year: number;
   max_earnings: number;
   state_code: string;
+  in_nyc?: boolean;
 }
 
 export interface BenefitAtIncome {

@@ -75,6 +75,7 @@ EXAMPLES = [
         "dependent_ages": [3],
         "income": 35000,
         "state_code": "NY",
+        "in_nyc": True,
     },
     {
         "id": "in_married_2kids",
@@ -84,6 +85,7 @@ EXAMPLES = [
         "dependent_ages": [4, 8],
         "income": 55000,
         "state_code": "IN",
+        "in_nyc": False,
     },
     {
         "id": "ca_married_nokids",
@@ -93,6 +95,7 @@ EXAMPLES = [
         "dependent_ages": [],
         "income": 80000,
         "state_code": "CA",
+        "in_nyc": False,
     },
 ]
 
@@ -114,6 +117,11 @@ def _build_household(ex: dict) -> dict:
             "your household": {
                 "members": ["you"],
                 "state_code": {YEAR_STR: ex["state_code"]},
+                **(
+                    {"county_str": {YEAR_STR: "NEW_YORK_COUNTY_NY"}}
+                    if ex.get("in_nyc")
+                    else {}
+                ),
                 "household_net_income": {YEAR_STR: None},
             }
         },

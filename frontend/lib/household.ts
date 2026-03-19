@@ -16,7 +16,7 @@ function addMemberToUnits(situation: Record<string, any>, memberId: string) {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function buildHouseholdSituation(params: HouseholdRequest): Record<string, any> {
-  const { age_head, age_spouse, dependent_ages, income, year, max_earnings, state_code } = params;
+  const { age_head, age_spouse, dependent_ages, income, year, max_earnings, state_code, in_nyc } = params;
   const yearStr = String(year);
   const axisMax = Math.max(max_earnings, income);
 
@@ -35,6 +35,9 @@ export function buildHouseholdSituation(params: HouseholdRequest): Record<string
       "your household": {
         members: ["you"],
         state_code: { [yearStr]: state_code },
+        ...(state_code === "NY" && in_nyc
+          ? { county_str: { [yearStr]: "NEW_YORK_COUNTY_NY" } }
+          : {}),
         household_net_income: { [yearStr]: null },
       },
     },

@@ -93,6 +93,7 @@ const EXAMPLE_HOUSEHOLDS = [
     dependentAges: [3],
     income: 35000,
     stateCode: 'NY',
+    inNyc: true,
   },
   {
     id: 'in_married_2kids',
@@ -104,6 +105,7 @@ const EXAMPLE_HOUSEHOLDS = [
     dependentAges: [4, 8],
     income: 55000,
     stateCode: 'IN',
+    inNyc: false,
   },
   {
     id: 'ca_married_nokids',
@@ -115,6 +117,7 @@ const EXAMPLE_HOUSEHOLDS = [
     dependentAges: [] as number[],
     income: 80000,
     stateCode: 'CA',
+    inNyc: false,
   },
 ];
 
@@ -126,6 +129,7 @@ function HouseholdImpactTab() {
   const [dependentAges, setDependentAges] = useState<number[]>([3]);
   const [income, setIncome] = useState(40000);
   const [stateCode, setStateCode] = useState('CA');
+  const [inNyc, setInNyc] = useState(false);
   const [maxEarnings, setMaxEarnings] = useState(200000);
   const [triggered, setTriggered] = useState(false);
   const [submittedRequest, setSubmittedRequest] = useState<HouseholdRequest | null>(null);
@@ -144,6 +148,7 @@ function HouseholdImpactTab() {
     setDependentAges([...ex.dependentAges]);
     setIncome(ex.income);
     setStateCode(ex.stateCode);
+    setInNyc(ex.inNyc);
     setMaxEarnings(200000);
     setActiveExampleId(ex.id);
     const req: HouseholdRequest = {
@@ -154,6 +159,7 @@ function HouseholdImpactTab() {
       year: 2026,
       max_earnings: 200000,
       state_code: ex.stateCode,
+      in_nyc: ex.inNyc,
     };
     setSubmittedRequest(req);
     setTriggered(true);
@@ -180,6 +186,7 @@ function HouseholdImpactTab() {
     year: 2026,
     max_earnings: maxEarnings,
     state_code: stateCode,
+    in_nyc: stateCode === 'NY' ? inNyc : undefined,
   });
 
   const handleCalculate = () => {
@@ -242,13 +249,27 @@ function HouseholdImpactTab() {
             <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
             <select
               value={stateCode}
-              onChange={(e) => setStateCode(e.target.value)}
+              onChange={(e) => {
+                setStateCode(e.target.value);
+                if (e.target.value !== 'NY') setInNyc(false);
+              }}
               className={selectStyle}
             >
               {US_STATES.map((s) => (
                 <option key={s.code} value={s.code}>{s.name}</option>
               ))}
             </select>
+            {stateCode === 'NY' && (
+              <label className="flex items-center gap-2 mt-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={inNyc}
+                  onChange={(e) => setInNyc(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                />
+                <span className="text-sm text-gray-700">Lives in New York City</span>
+              </label>
+            )}
           </div>
         </div>
 
