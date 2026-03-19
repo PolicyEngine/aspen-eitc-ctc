@@ -1,20 +1,24 @@
 """Pre-compute household impact data for the 3 example households.
 
-Calls the PE API with baseline and reform, computes net income curves,
-MTR schedules, and saves as JSON to frontend/public/data/examples/.
+Uses the local policyengine-us package directly (not the API) so it works
+as soon as the package has the required reforms, without waiting for API
+deployment.
 
 Usage:
     python scripts/precompute_examples.py
 """
 
 import json
-import math
 import os
 import sys
 
-import requests
+import numpy as np
+from policyengine_core.reforms import Reform
+from policyengine_us import Simulation
 
-PE_API_URL = "https://api.policyengine.org"
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from reforms import create_aspen_reform
+
 OUTPUT_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "frontend",
@@ -23,48 +27,9 @@ OUTPUT_DIR = os.path.join(
     "examples",
 )
 
-PERIOD = "2026-01-01.2100-12-31"
 YEAR = 2026
-YEAR_STR = "2026"
 MAX_EARNINGS = 200000
-COUNT = 401  # data points for smooth curves
-
-REFORM = {
-    # Streamlined EITC
-    "gov.contrib.streamlined_eitc.in_effect": {PERIOD: True},
-    "gov.contrib.streamlined_eitc.max.single[1].amount": {PERIOD: 3995},
-    "gov.contrib.streamlined_eitc.max.joint[1].amount": {PERIOD: 4993},
-    "gov.irs.credits.eitc.phase_in_rate[1].amount": {PERIOD: 0.34},
-    "gov.irs.credits.eitc.phase_in_rate[2].amount": {PERIOD: 0.34},
-    "gov.irs.credits.eitc.phase_in_rate[3].amount": {PERIOD: 0.34},
-    "gov.irs.credits.eitc.phase_out.start[1].amount": {PERIOD: 21560},
-    "gov.irs.credits.eitc.phase_out.start[2].amount": {PERIOD: 21560},
-    "gov.irs.credits.eitc.phase_out.start[3].amount": {PERIOD: 21560},
-    "gov.irs.credits.eitc.phase_out.joint_bonus[1].amount": {PERIOD: 5390},
-    "gov.irs.credits.eitc.phase_out.rate[1].amount": {PERIOD: 0.1598},
-    "gov.irs.credits.eitc.phase_out.rate[2].amount": {PERIOD: 0.1598},
-    "gov.irs.credits.eitc.phase_out.rate[3].amount": {PERIOD: 0.1598},
-    # Enhanced CTC
-    "gov.irs.credits.ctc.amount.arpa[0].amount": {PERIOD: 3600},
-    "gov.irs.credits.ctc.amount.arpa[1].amount": {PERIOD: 3000},
-    "gov.irs.credits.ctc.phase_out.threshold.SINGLE": {PERIOD: 75000},
-    "gov.irs.credits.ctc.phase_out.threshold.HEAD_OF_HOUSEHOLD": {PERIOD: 75000},
-    "gov.irs.credits.ctc.phase_out.threshold.JOINT": {PERIOD: 110000},
-    "gov.irs.credits.ctc.phase_out.threshold.SURVIVING_SPOUSE": {PERIOD: 110000},
-    "gov.irs.credits.ctc.phase_out.threshold.SEPARATE": {PERIOD: 55000},
-    "gov.contrib.ctc.linear_phase_out.in_effect": {PERIOD: True},
-    "gov.contrib.ctc.linear_phase_out.end.SINGLE": {PERIOD: 240000},
-    "gov.contrib.ctc.linear_phase_out.end.HEAD_OF_HOUSEHOLD": {PERIOD: 240000},
-    "gov.contrib.ctc.linear_phase_out.end.JOINT": {PERIOD: 440000},
-    "gov.contrib.ctc.linear_phase_out.end.SURVIVING_SPOUSE": {PERIOD: 440000},
-    "gov.contrib.ctc.linear_phase_out.end.SEPARATE": {PERIOD: 175000},
-    "gov.irs.credits.ctc.refundable.fully_refundable": {PERIOD: True},
-    "gov.irs.credits.ctc.refundable.phase_in.rate": {PERIOD: 0.30},
-    "gov.irs.credits.ctc.refundable.phase_in.threshold": {PERIOD: 0},
-    "gov.contrib.ctc.minimum_refundable.in_effect": {PERIOD: True},
-    "gov.contrib.ctc.minimum_refundable.amount[0].amount": {PERIOD: 1800},
-    "gov.contrib.ctc.minimum_refundable.amount[1].amount": {PERIOD: 1500},
-}
+COUNT = 401
 
 EXAMPLES = [
     {
@@ -100,13 +65,14 @@ EXAMPLES = [
 ]
 
 
-def _build_household(ex: dict) -> dict:
+def _build_situation(ex: dict) -> dict:
     """Build PE household situation matching frontend/lib/household.ts."""
-    situation: dict = {
+    year_str = str(YEAR)
+    situation = {
         "people": {
             "you": {
-                "age": {YEAR_STR: ex["age_head"]},
-                "employment_income": {YEAR_STR: None},
+                "age": {year_str: ex["age_head"]},
+                "employment_income": {year_str: 0},
             }
         },
         "families": {"your family": {"members": ["you"]}},
@@ -116,13 +82,7 @@ def _build_household(ex: dict) -> dict:
         "households": {
             "your household": {
                 "members": ["you"],
-                "state_code": {YEAR_STR: ex["state_code"]},
-                **(
-                    {"county_str": {YEAR_STR: "NEW_YORK_COUNTY_NY"}}
-                    if ex.get("in_nyc")
-                    else {}
-                ),
-                "household_net_income": {YEAR_STR: None},
+                "state_code": {year_str: ex["state_code"]},
             }
         },
         "axes": [
@@ -132,18 +92,23 @@ def _build_household(ex: dict) -> dict:
                     "min": 0,
                     "max": MAX_EARNINGS,
                     "count": COUNT,
-                    "period": YEAR_STR,
+                    "period": year_str,
                 }
             ]
         ],
     }
+
+    if ex.get("in_nyc"):
+        situation["households"]["your household"]["county_str"] = {
+            year_str: "NEW_YORK_COUNTY_NY"
+        }
 
     all_units = ["families", "spm_units", "tax_units", "households"]
 
     # Add spouse
     if ex["age_spouse"] is not None:
         situation["people"]["your partner"] = {
-            "age": {YEAR_STR: ex["age_spouse"]}
+            "age": {year_str: ex["age_spouse"]}
         }
         for unit in all_units:
             key = list(situation[unit].keys())[0]
@@ -159,7 +124,7 @@ def _build_household(ex: dict) -> dict:
     ] + [f"dependent_{i + 1}" for i in range(2, 10)]
     for i, age in enumerate(ex["dependent_ages"]):
         name = dep_names[i]
-        situation["people"][name] = {"age": {YEAR_STR: age}}
+        situation["people"][name] = {"age": {year_str: age}}
         for unit in all_units:
             key = list(situation[unit].keys())[0]
             situation[unit][key]["members"].append(name)
@@ -170,33 +135,20 @@ def _build_household(ex: dict) -> dict:
     return situation
 
 
-def _pe_calculate(body: dict) -> dict:
-    resp = requests.post(
-        f"{PE_API_URL}/us/calculate",
-        json=body,
-        timeout=120,
-    )
-    if not resp.ok:
-        error_body = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else resp.text
-        print(f"  API error {resp.status_code}: {json.dumps(error_body, indent=2)[:500]}", file=sys.stderr)
-        resp.raise_for_status()
-    return resp.json()
-
-
-def _compute_mtr(net_income: list, incomes: list) -> list:
+def _compute_mtr(net_income, incomes):
     mtr = []
     for i in range(len(net_income)):
         if i == 0:
             if len(incomes) > 1:
                 d_net = net_income[1] - net_income[0]
                 d_inc = incomes[1] - incomes[0]
-                mtr.append(1 - d_net / d_inc if d_inc > 0 else 0)
+                mtr.append(float(1 - d_net / d_inc) if d_inc > 0 else 0.0)
             else:
-                mtr.append(0)
+                mtr.append(0.0)
         else:
             d_net = net_income[i] - net_income[i - 1]
             d_inc = incomes[i] - incomes[i - 1]
-            mtr.append(1 - d_net / d_inc if d_inc > 0 else 0)
+            mtr.append(float(1 - d_net / d_inc) if d_inc > 0 else 0.0)
     return mtr
 
 
@@ -212,25 +164,50 @@ def _interpolate(xs, ys, x):
     return ys[-1]
 
 
+def _extract_axis_values(sim, variable, year, situation):
+    """Extract per-entity values from an axes simulation, matching the API reshape logic.
+
+    When axes are present, sim.calculate() returns a flat array with all
+    entity instances interleaved.  The API reshapes via:
+        result.reshape((-1, count_entities)).T[entity_index]
+    We replicate that here.
+    """
+    result = sim.calculate(variable, year)
+    variable_obj = sim.tax_benefit_system.get_variable(variable)
+    entity_plural = variable_obj.entity.plural
+
+    count_entities = len(situation[entity_plural])
+    # First entity in the dict (e.g. "you" for people, "your household" for households)
+    entity_index = 0
+
+    return (
+        result.astype(float)
+        .reshape((-1, count_entities))
+        .T[entity_index]
+        .tolist()
+    )
+
+
 def precompute_example(ex: dict) -> dict:
     """Compute full household impact response for one example."""
-    household = _build_household(ex)
+    situation = _build_situation(ex)
+    reform = (create_aspen_reform(),)
 
-    print(f"  Computing baseline...")
-    baseline_result = _pe_calculate({"household": household})
+    print("  Running baseline...")
+    sim_baseline = Simulation(situation=situation)
+    print("  Running reform...")
+    sim_reform = Simulation(situation=situation, reform=reform)
 
-    print(f"  Computing reform...")
-    reform_result = _pe_calculate({"household": household, "policy": REFORM})
-
-    income_range = baseline_result["result"]["people"]["you"][
-        "employment_income"
-    ][YEAR_STR]
-    baseline_net = baseline_result["result"]["households"]["your household"][
-        "household_net_income"
-    ][YEAR_STR]
-    reform_net = reform_result["result"]["households"]["your household"][
-        "household_net_income"
-    ][YEAR_STR]
+    # Extract arrays using axes reshape (matches PE API pattern)
+    income_range = _extract_axis_values(
+        sim_baseline, "employment_income", YEAR, situation
+    )
+    baseline_net = _extract_axis_values(
+        sim_baseline, "household_net_income", YEAR, situation
+    )
+    reform_net = _extract_axis_values(
+        sim_reform, "household_net_income", YEAR, situation
+    )
 
     net_income_change = [
         reform_net[i] - baseline_net[i] for i in range(len(baseline_net))
@@ -241,7 +218,6 @@ def precompute_example(ex: dict) -> dict:
     baseline_at = _interpolate(income_range, baseline_net, ex["income"])
     reform_at = _interpolate(income_range, reform_net, ex["income"])
 
-    # Round arrays to reduce JSON size
     def _round_list(lst, decimals=2):
         return [round(v, decimals) for v in lst]
 
