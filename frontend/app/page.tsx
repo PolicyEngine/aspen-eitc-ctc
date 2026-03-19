@@ -82,6 +82,39 @@ export default function Home() {
   );
 }
 
+const EXAMPLE_HOUSEHOLDS = [
+  {
+    label: 'Single parent, 1 child (NYC)',
+    description: 'Single parent, age 30, with one child (age 3) in New York City',
+    ageHead: 30,
+    ageSpouse: null as number | null,
+    married: false,
+    dependentAges: [3],
+    income: 35000,
+    stateCode: 'NY',
+  },
+  {
+    label: 'Married couple, 2 children (IN)',
+    description: 'Married couple, ages 35 & 33, with two children (ages 4 & 8) in Indiana',
+    ageHead: 35,
+    ageSpouse: 33 as number | null,
+    married: true,
+    dependentAges: [4, 8],
+    income: 55000,
+    stateCode: 'IN',
+  },
+  {
+    label: 'Married couple, no children (CA)',
+    description: 'Married couple, ages 40 & 38, with no children in California',
+    ageHead: 40,
+    ageSpouse: 38 as number | null,
+    married: true,
+    dependentAges: [] as number[],
+    income: 80000,
+    stateCode: 'CA',
+  },
+];
+
 /** Household impact tab — includes inline household config */
 function HouseholdImpactTab() {
   const [ageHead, setAgeHead] = useState(35);
@@ -98,6 +131,27 @@ function HouseholdImpactTab() {
     setMarried(value);
     if (!value) setAgeSpouse(null);
     else setAgeSpouse(35);
+  };
+
+  const loadExample = (ex: typeof EXAMPLE_HOUSEHOLDS[0]) => {
+    setAgeHead(ex.ageHead);
+    setAgeSpouse(ex.ageSpouse);
+    setMarried(ex.married);
+    setDependentAges([...ex.dependentAges]);
+    setIncome(ex.income);
+    setStateCode(ex.stateCode);
+    setMaxEarnings(200000);
+    const req: HouseholdRequest = {
+      age_head: ex.ageHead,
+      age_spouse: ex.married ? ex.ageSpouse : null,
+      dependent_ages: ex.dependentAges,
+      income: ex.income,
+      year: 2026,
+      max_earnings: 200000,
+      state_code: ex.stateCode,
+    };
+    setSubmittedRequest(req);
+    setTriggered(true);
   };
 
   const handleDependentCountChange = (count: number) => {
@@ -130,6 +184,29 @@ function HouseholdImpactTab() {
 
   return (
     <div className="space-y-6">
+      {/* Example households */}
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-3">Example households</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {EXAMPLE_HOUSEHOLDS.map((ex) => (
+            <button
+              key={ex.label}
+              onClick={() => loadExample(ex)}
+              className="text-left p-4 rounded-lg border border-gray-200 hover:border-primary-400 hover:bg-primary-50 transition-colors group"
+            >
+              <p className="font-medium text-gray-900 group-hover:text-primary-700 text-sm">{ex.label}</p>
+              <p className="text-xs text-gray-500 mt-1">{ex.description}</p>
+              <p className="text-xs text-gray-400 mt-1">Income: ${ex.income.toLocaleString()}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200" /></div>
+        <div className="relative flex justify-center"><span className="bg-white px-3 text-sm text-gray-500">or configure your own</span></div>
+      </div>
+
       {/* Inline household config */}
       <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
         <h3 className="text-lg font-semibold text-gray-900 mb-5">Your household</h3>

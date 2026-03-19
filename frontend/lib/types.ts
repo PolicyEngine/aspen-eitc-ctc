@@ -17,6 +17,10 @@ export interface BenefitAtIncome {
 export interface HouseholdImpactResponse {
   income_range: number[];
   net_income_change: number[];
+  baseline_net_income: number[];
+  reform_net_income: number[];
+  baseline_mtr: number[];
+  reform_mtr: number[];
   benefit_at_income: BenefitAtIncome;
   x_axis_max: number;
 }

@@ -61,7 +61,8 @@ interface Props {
 
 export default function AggregateImpact({ triggered }: Props) {
   const [selectedYear, setSelectedYear] = useState(2026);
-  const { data, isLoading, error } = useAggregateImpact(triggered, selectedYear);
+  const [scoringMode, setScoringMode] = useState<'static' | 'dynamic'>('static');
+  const { data, isLoading, error } = useAggregateImpact(triggered, scoringMode, selectedYear);
   const [activeSection, setActiveSection] = useState<'fiscal' | 'distributional' | 'winners' | 'poverty'>('fiscal');
   const [distMode, setDistMode] = useState<'relative' | 'absolute'>('relative');
 
@@ -119,9 +120,31 @@ export default function AggregateImpact({ triggered }: Props) {
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-primary">National impact analysis</h2>
 
-      <p className="text-sm text-gray-500 bg-gray-50 rounded-lg px-4 py-3 border border-gray-200">
-        These estimates are static: they do not capture behavioral responses such as changes in labor supply, tax avoidance, or migration.
-      </p>
+      {/* Scoring mode toggle */}
+      <div className="bg-gray-50 rounded-lg px-4 py-3 border border-gray-200">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <p className="text-sm text-gray-500">
+            {scoringMode === 'static'
+              ? 'Static scoring: does not capture behavioral responses such as changes in labor supply.'
+              : 'Dynamic scoring: incorporates CBO labor supply elasticities (income: -0.05, substitution: 0.25).'}
+          </p>
+          <div className="flex gap-1">
+            {(['static', 'dynamic'] as const).map((mode) => (
+              <button
+                key={mode}
+                onClick={() => setScoringMode(mode)}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                  scoringMode === mode
+                    ? 'bg-primary-500 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                {mode === 'static' ? 'Static' : 'Dynamic'}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
 
       {/* Year selector */}
       <div>

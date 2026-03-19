@@ -189,6 +189,30 @@ export const api = {
       (val: number, i: number) => val - baselineNetIncome[i]
     );
 
+    // Compute marginal tax rates: MTR = 1 - d(net_income)/d(employment_income)
+    const computeMTR = (netIncome: number[], incomes: number[]): number[] => {
+      const mtr: number[] = [];
+      for (let i = 0; i < netIncome.length; i++) {
+        if (i === 0) {
+          if (incomes.length > 1) {
+            const dNet = netIncome[1] - netIncome[0];
+            const dInc = incomes[1] - incomes[0];
+            mtr.push(dInc > 0 ? 1 - dNet / dInc : 0);
+          } else {
+            mtr.push(0);
+          }
+        } else {
+          const dNet = netIncome[i] - netIncome[i - 1];
+          const dInc = incomes[i] - incomes[i - 1];
+          mtr.push(dInc > 0 ? 1 - dNet / dInc : 0);
+        }
+      }
+      return mtr;
+    };
+
+    const baselineMTR = computeMTR(baselineNetIncome, incomeRange);
+    const reformMTR = computeMTR(reformNetIncome, incomeRange);
+
     // Interpolate point estimate at user's income
     const baselineAtIncome = interpolate(incomeRange, baselineNetIncome, request.income);
     const reformAtIncome = interpolate(incomeRange, reformNetIncome, request.income);
@@ -196,6 +220,10 @@ export const api = {
     return {
       income_range: incomeRange,
       net_income_change: netIncomeChange,
+      baseline_net_income: baselineNetIncome,
+      reform_net_income: reformNetIncome,
+      baseline_mtr: baselineMTR,
+      reform_mtr: reformMTR,
       benefit_at_income: {
         baseline: baselineAtIncome,
         reform: reformAtIncome,

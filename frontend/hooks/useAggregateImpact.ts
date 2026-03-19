@@ -10,17 +10,17 @@ async function fetchCSV(filename: string): Promise<Record<string, string | numbe
   return parseCSV(text);
 }
 
-function buildAggregateResponse(year: number): Promise<AggregateImpactResponse> {
+function buildAggregateResponse(variant: string, year: number): Promise<AggregateImpactResponse> {
   return Promise.all([
     fetchCSV("distributional_impact.csv"),
     fetchCSV("metrics.csv"),
     fetchCSV("winners_losers.csv"),
     fetchCSV("income_brackets.csv"),
   ]).then(([distributional, metrics, winnersLosers, incomeBrackets]) => {
-    const dist = distributional.filter((r) => r.year === year);
-    const met = metrics.filter((r) => r.year === year);
-    const wl = winnersLosers.filter((r) => r.year === year);
-    const ib = incomeBrackets.filter((r) => r.year === year);
+    const dist = distributional.filter((r) => r.variant === variant && r.year === year);
+    const met = metrics.filter((r) => r.variant === variant && r.year === year);
+    const wl = winnersLosers.filter((r) => r.variant === variant && r.year === year);
+    const ib = incomeBrackets.filter((r) => r.variant === variant && r.year === year);
 
     const m = Object.fromEntries(met.map((r) => [r.metric, r.value as number]));
 
@@ -108,11 +108,12 @@ function buildAggregateResponse(year: number): Promise<AggregateImpactResponse> 
 
 export function useAggregateImpact(
   enabled: boolean,
+  variant: "static" | "dynamic" = "static",
   year: number = 2026
 ) {
   return useQuery<AggregateImpactResponse>({
-    queryKey: ["aggregateImpact", year],
-    queryFn: () => buildAggregateResponse(year),
+    queryKey: ["aggregateImpact", variant, year],
+    queryFn: () => buildAggregateResponse(variant, year),
     enabled,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
