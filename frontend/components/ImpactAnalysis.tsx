@@ -20,6 +20,7 @@ interface Props {
   request: HouseholdRequest | null;
   triggered: boolean;
   maxEarnings?: number;
+  exampleId?: string | null;
 }
 
 type ChartMode = 'change' | 'net_income' | 'mtr' | 'cliffs';
@@ -31,8 +32,8 @@ const CHART_MODES: { key: ChartMode; label: string }[] = [
   { key: 'cliffs', label: 'Benefit cliffs' },
 ];
 
-export default function ImpactAnalysis({ request, triggered, maxEarnings }: Props) {
-  const { data, isLoading, error } = useHouseholdImpact(request, triggered);
+export default function ImpactAnalysis({ request, triggered, maxEarnings, exampleId }: Props) {
+  const { data, isLoading, error } = useHouseholdImpact(request, triggered, exampleId ?? undefined);
   const [chartMode, setChartMode] = useState<ChartMode>('change');
 
   if (!triggered) return null;

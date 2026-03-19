@@ -161,6 +161,17 @@ function interpolate(xs: number[], ys: number[], x: number): number {
 }
 
 export const api = {
+  async loadPrecomputedExample(
+    exampleId: string
+  ): Promise<HouseholdImpactResponse> {
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+    const res = await fetch(`${basePath}/data/examples/${exampleId}.json`);
+    if (!res.ok) {
+      throw new Error(`Failed to load example: ${exampleId}`);
+    }
+    return res.json();
+  },
+
   async calculateHouseholdImpact(
     request: HouseholdRequest
   ): Promise<HouseholdImpactResponse> {

@@ -84,6 +84,7 @@ export default function Home() {
 
 const EXAMPLE_HOUSEHOLDS = [
   {
+    id: 'nyc_single_parent',
     label: 'Single parent, 1 child (NYC)',
     description: 'Single parent, age 30, with one child (age 3) in New York City',
     ageHead: 30,
@@ -94,6 +95,7 @@ const EXAMPLE_HOUSEHOLDS = [
     stateCode: 'NY',
   },
   {
+    id: 'in_married_2kids',
     label: 'Married couple, 2 children (IN)',
     description: 'Married couple, ages 35 & 33, with two children (ages 4 & 8) in Indiana',
     ageHead: 35,
@@ -104,6 +106,7 @@ const EXAMPLE_HOUSEHOLDS = [
     stateCode: 'IN',
   },
   {
+    id: 'ca_married_nokids',
     label: 'Married couple, no children (CA)',
     description: 'Married couple, ages 40 & 38, with no children in California',
     ageHead: 40,
@@ -126,6 +129,7 @@ function HouseholdImpactTab() {
   const [maxEarnings, setMaxEarnings] = useState(200000);
   const [triggered, setTriggered] = useState(false);
   const [submittedRequest, setSubmittedRequest] = useState<HouseholdRequest | null>(null);
+  const [activeExampleId, setActiveExampleId] = useState<string | null>(null);
 
   const handleMarriedChange = (value: boolean) => {
     setMarried(value);
@@ -141,6 +145,7 @@ function HouseholdImpactTab() {
     setIncome(ex.income);
     setStateCode(ex.stateCode);
     setMaxEarnings(200000);
+    setActiveExampleId(ex.id);
     const req: HouseholdRequest = {
       age_head: ex.ageHead,
       age_spouse: ex.married ? ex.ageSpouse : null,
@@ -178,6 +183,7 @@ function HouseholdImpactTab() {
   });
 
   const handleCalculate = () => {
+    setActiveExampleId(null);
     setSubmittedRequest(buildRequest());
     setTriggered(true);
   };
@@ -192,7 +198,11 @@ function HouseholdImpactTab() {
             <button
               key={ex.label}
               onClick={() => loadExample(ex)}
-              className="text-left p-4 rounded-lg border border-gray-200 hover:border-primary-400 hover:bg-primary-50 transition-colors group"
+              className={`text-left p-4 rounded-lg border transition-colors group ${
+                activeExampleId === ex.id
+                  ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-200'
+                  : 'border-gray-200 hover:border-primary-400 hover:bg-primary-50'
+              }`}
             >
               <p className="font-medium text-gray-900 group-hover:text-primary-700 text-sm">{ex.label}</p>
               <p className="text-xs text-gray-500 mt-1">{ex.description}</p>
@@ -361,7 +371,7 @@ function HouseholdImpactTab() {
       )}
 
       {/* Impact results */}
-      <ImpactAnalysis request={submittedRequest} triggered={triggered} maxEarnings={maxEarnings} />
+      <ImpactAnalysis request={submittedRequest} triggered={triggered} maxEarnings={maxEarnings} exampleId={activeExampleId} />
     </div>
   );
 }
