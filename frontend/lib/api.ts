@@ -139,6 +139,12 @@ function buildReform(): Record<string, Record<string, number | boolean>> {
 
     // Phase-in threshold: $0
     "gov.irs.credits.ctc.refundable.phase_in.threshold": { [period]: 0 },
+
+    // 50% refundability at zero earnings via minimum refundable amount
+    // $3,600 * 0.50 = $1,800 (ages 0-5), $3,000 * 0.50 = $1,500 (ages 6-17)
+    "gov.contrib.ctc.minimum_refundable.in_effect": { [period]: true },
+    "gov.contrib.ctc.minimum_refundable.amount.brackets[0].amount": { [period]: 1800 },
+    "gov.contrib.ctc.minimum_refundable.amount.brackets[1].amount": { [period]: 1500 },
   };
 }
 
