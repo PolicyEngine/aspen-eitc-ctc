@@ -63,34 +63,38 @@ async function peCalculate(body: Record<string, any>): Promise<any> {
 /**
  * Build the Aspen ESG EITC/CTC reform parameter overrides.
  *
- * Streamlined EITC:
- * - Single schedule for all filers with dependent children (modeled on one-child schedule)
- * - Phase-in rate: 34% for all child brackets
- * - Max credit: $3,995 for all child brackets
+ * Streamlined EITC (uses contrib structural reform + IRS parameter overrides):
+ * - gov.contrib.streamlined_eitc.in_effect = true (enables filing-status-specific max)
+ * - gov.contrib.streamlined_eitc.max.single[1] = $3,995 (single/HOH max for 1+ children)
+ * - gov.contrib.streamlined_eitc.max.joint[1] = $4,993 (married max for 1+ children)
+ * - Phase-in rate: 34% for all child brackets (IRS param override)
  * - Phase-out start: $21,560 (single); joint bonus = $5,390
  * - Phase-out rate: 15.98% for all child brackets
  *
- * Enhanced CTC:
- * - Credit amounts: $3,600 (ages 0-5) / $3,000 (ages 6-17) via ARPA-style amounts
- * - Fully refundable
- * - 30% phase-in rate (from $0)
+ * Enhanced CTC (uses contrib structural reform + IRS parameter overrides):
+ * - Credit amounts: $3,600 (ages 0-5) / $3,000 (ages 6-17) via ARPA amounts
+ * - Fully refundable with 30% phase-in rate from $0
+ * - gov.contrib.ctc.linear_phase_out.in_effect = true (linear phase-out)
  * - Phase-out thresholds: $75,000 (single/HOH) / $110,000 (married)
+ * - Full phase-out: $240,000 (single) / $440,000 (married)
  */
 function buildReform(): Record<string, Record<string, number | boolean>> {
   const period = "2026-01-01.2100-12-31";
 
   return {
-    // === EITC Reform ===
+    // === Streamlined EITC Reform ===
+    // Enable structural reform for filing-status-specific max credits
+    "gov.contrib.streamlined_eitc.in_effect": { [period]: true },
+
+    // Max credits by filing status (structural reform params)
+    // $3,995 for single/HOH, $4,993 for married (1+ children)
+    "gov.contrib.streamlined_eitc.max.single.brackets[1].amount": { [period]: 3995 },
+    "gov.contrib.streamlined_eitc.max.joint.brackets[1].amount": { [period]: 4993 },
+
     // Phase-in rates: 34% for all child brackets (1, 2, 3+)
-    // Bracket index 1 = 1 child (already 34%, but set explicitly)
     "gov.irs.credits.eitc.phase_in_rate.brackets[1].amount": { [period]: 0.34 },
     "gov.irs.credits.eitc.phase_in_rate.brackets[2].amount": { [period]: 0.34 },
     "gov.irs.credits.eitc.phase_in_rate.brackets[3].amount": { [period]: 0.34 },
-
-    // Max credits: $3,995 for all child brackets
-    "gov.irs.credits.eitc.max.brackets[1].amount": { [period]: 3995 },
-    "gov.irs.credits.eitc.max.brackets[2].amount": { [period]: 3995 },
-    "gov.irs.credits.eitc.max.brackets[3].amount": { [period]: 3995 },
 
     // Phase-out start: $21,560 for all child brackets (single filer)
     "gov.irs.credits.eitc.phase_out.start.brackets[1].amount": { [period]: 21560 },
@@ -105,17 +109,27 @@ function buildReform(): Record<string, Record<string, number | boolean>> {
     "gov.irs.credits.eitc.phase_out.rate.brackets[2].amount": { [period]: 0.1598 },
     "gov.irs.credits.eitc.phase_out.rate.brackets[3].amount": { [period]: 0.1598 },
 
-    // === CTC Reform ===
+    // === Enhanced CTC Reform ===
     // Credit amounts via ARPA-style: $3,600 (ages 0-5) / $3,000 (ages 6-17)
     "gov.irs.credits.ctc.amount.arpa.brackets[0].amount": { [period]: 3600 },
     "gov.irs.credits.ctc.amount.arpa.brackets[1].amount": { [period]: 3000 },
 
-    // Phase-out thresholds
+    // Phase-out thresholds (start of phase-out)
     "gov.irs.credits.ctc.phase_out.threshold.SINGLE": { [period]: 75000 },
     "gov.irs.credits.ctc.phase_out.threshold.HEAD_OF_HOUSEHOLD": { [period]: 75000 },
     "gov.irs.credits.ctc.phase_out.threshold.JOINT": { [period]: 110000 },
     "gov.irs.credits.ctc.phase_out.threshold.SURVIVING_SPOUSE": { [period]: 110000 },
     "gov.irs.credits.ctc.phase_out.threshold.SEPARATE": { [period]: 55000 },
+
+    // Enable linear phase-out structural reform
+    "gov.contrib.ctc.linear_phase_out.in_effect": { [period]: true },
+
+    // Full phase-out endpoints (linear phase-out reform params)
+    "gov.contrib.ctc.linear_phase_out.end.SINGLE": { [period]: 240000 },
+    "gov.contrib.ctc.linear_phase_out.end.HEAD_OF_HOUSEHOLD": { [period]: 240000 },
+    "gov.contrib.ctc.linear_phase_out.end.JOINT": { [period]: 440000 },
+    "gov.contrib.ctc.linear_phase_out.end.SURVIVING_SPOUSE": { [period]: 440000 },
+    "gov.contrib.ctc.linear_phase_out.end.SEPARATE": { [period]: 175000 },
 
     // Fully refundable CTC
     "gov.irs.credits.ctc.refundable.fully_refundable": { [period]: true },
@@ -123,7 +137,7 @@ function buildReform(): Record<string, Record<string, number | boolean>> {
     // Phase-in rate: 30%
     "gov.irs.credits.ctc.refundable.phase_in.rate": { [period]: 0.30 },
 
-    // Phase-in threshold: $0 (50% refundability at zero earnings)
+    // Phase-in threshold: $0
     "gov.irs.credits.ctc.refundable.phase_in.threshold": { [period]: 0 },
   };
 }
