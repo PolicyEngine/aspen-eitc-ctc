@@ -22,14 +22,13 @@ export function buildHouseholdSituation(params: HouseholdRequest): Record<string
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const situation: Record<string, any> = {
-    people: { you: { age: { [yearStr]: age_head } } },
+    people: { you: { age: { [yearStr]: age_head }, employment_income: { [yearStr]: null } } },
     families: { "your family": { members: ["you"] } },
     marital_units: { "your marital unit": { members: ["you"] } },
     spm_units: { "your household": { members: ["you"] } },
     tax_units: {
       "your tax unit": {
         members: ["you"],
-        employment_income: { [yearStr]: null },
       },
     },
     households: {
@@ -41,7 +40,7 @@ export function buildHouseholdSituation(params: HouseholdRequest): Record<string
     },
   };
 
-  // Sweep employment income (EITC depends on earned income, not AGI)
+  // Sweep employment income on the head person (EITC depends on earned income)
   situation.axes = [
     [
       {
@@ -50,7 +49,6 @@ export function buildHouseholdSituation(params: HouseholdRequest): Record<string
         max: axisMax,
         count: Math.min(4001, Math.max(501, Math.floor(axisMax / 500))),
         period: yearStr,
-        target: "tax_unit",
       },
     ],
   ];

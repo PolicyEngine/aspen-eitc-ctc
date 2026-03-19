@@ -88,31 +88,31 @@ function buildReform(): Record<string, Record<string, number | boolean>> {
 
     // Max credits by filing status (structural reform params)
     // $3,995 for single/HOH, $4,993 for married (1+ children)
-    "gov.contrib.streamlined_eitc.max.single.brackets[1].amount": { [period]: 3995 },
-    "gov.contrib.streamlined_eitc.max.joint.brackets[1].amount": { [period]: 4993 },
+    "gov.contrib.streamlined_eitc.max.single[1].amount": { [period]: 3995 },
+    "gov.contrib.streamlined_eitc.max.joint[1].amount": { [period]: 4993 },
 
     // Phase-in rates: 34% for all child brackets (1, 2, 3+)
-    "gov.irs.credits.eitc.phase_in_rate.brackets[1].amount": { [period]: 0.34 },
-    "gov.irs.credits.eitc.phase_in_rate.brackets[2].amount": { [period]: 0.34 },
-    "gov.irs.credits.eitc.phase_in_rate.brackets[3].amount": { [period]: 0.34 },
+    "gov.irs.credits.eitc.phase_in_rate[1].amount": { [period]: 0.34 },
+    "gov.irs.credits.eitc.phase_in_rate[2].amount": { [period]: 0.34 },
+    "gov.irs.credits.eitc.phase_in_rate[3].amount": { [period]: 0.34 },
 
     // Phase-out start: $21,560 for all child brackets (single filer)
-    "gov.irs.credits.eitc.phase_out.start.brackets[1].amount": { [period]: 21560 },
-    "gov.irs.credits.eitc.phase_out.start.brackets[2].amount": { [period]: 21560 },
-    "gov.irs.credits.eitc.phase_out.start.brackets[3].amount": { [period]: 21560 },
+    "gov.irs.credits.eitc.phase_out.start[1].amount": { [period]: 21560 },
+    "gov.irs.credits.eitc.phase_out.start[2].amount": { [period]: 21560 },
+    "gov.irs.credits.eitc.phase_out.start[3].amount": { [period]: 21560 },
 
     // Joint bonus: $26,950 - $21,560 = $5,390
-    "gov.irs.credits.eitc.phase_out.joint_bonus.brackets[1].amount": { [period]: 5390 },
+    "gov.irs.credits.eitc.phase_out.joint_bonus[1].amount": { [period]: 5390 },
 
     // Phase-out rates: 15.98% for all child brackets
-    "gov.irs.credits.eitc.phase_out.rate.brackets[1].amount": { [period]: 0.1598 },
-    "gov.irs.credits.eitc.phase_out.rate.brackets[2].amount": { [period]: 0.1598 },
-    "gov.irs.credits.eitc.phase_out.rate.brackets[3].amount": { [period]: 0.1598 },
+    "gov.irs.credits.eitc.phase_out.rate[1].amount": { [period]: 0.1598 },
+    "gov.irs.credits.eitc.phase_out.rate[2].amount": { [period]: 0.1598 },
+    "gov.irs.credits.eitc.phase_out.rate[3].amount": { [period]: 0.1598 },
 
     // === Enhanced CTC Reform ===
     // Credit amounts via ARPA-style: $3,600 (ages 0-5) / $3,000 (ages 6-17)
-    "gov.irs.credits.ctc.amount.arpa.brackets[0].amount": { [period]: 3600 },
-    "gov.irs.credits.ctc.amount.arpa.brackets[1].amount": { [period]: 3000 },
+    "gov.irs.credits.ctc.amount.arpa[0].amount": { [period]: 3600 },
+    "gov.irs.credits.ctc.amount.arpa[1].amount": { [period]: 3000 },
 
     // Phase-out thresholds (start of phase-out)
     "gov.irs.credits.ctc.phase_out.threshold.SINGLE": { [period]: 75000 },
@@ -143,8 +143,8 @@ function buildReform(): Record<string, Record<string, number | boolean>> {
     // 50% refundability at zero earnings via minimum refundable amount
     // $3,600 * 0.50 = $1,800 (ages 0-5), $3,000 * 0.50 = $1,500 (ages 6-17)
     "gov.contrib.ctc.minimum_refundable.in_effect": { [period]: true },
-    "gov.contrib.ctc.minimum_refundable.amount.brackets[0].amount": { [period]: 1800 },
-    "gov.contrib.ctc.minimum_refundable.amount.brackets[1].amount": { [period]: 1500 },
+    "gov.contrib.ctc.minimum_refundable.amount[0].amount": { [period]: 1800 },
+    "gov.contrib.ctc.minimum_refundable.amount[1].amount": { [period]: 1500 },
   };
 }
 
@@ -180,9 +180,9 @@ export const api = {
     const reformNetIncome: number[] =
       reformResult.result.households["your household"]["household_net_income"][yearStr];
 
-    // Extract employment income x-axis values
+    // Extract employment income x-axis values (person-level variable)
     const incomeRange: number[] =
-      baselineResult.result.tax_units["your tax unit"]["employment_income"][yearStr];
+      baselineResult.result.people["you"]["employment_income"][yearStr];
 
     // Compute element-wise net income change
     const netIncomeChange = reformNetIncome.map(
