@@ -98,30 +98,29 @@ export default function PolicyOverview() {
     const points = [];
     const maxIncome = 500000;
     for (let inc = 0; inc <= maxIncome; inc += 1000) {
-      // Current law CTC (simplified - one child under 17)
-      const currentCredit = CURRENT_CTC.amountUnder17;
-      const currentReduction = Math.max(0, inc - CURRENT_CTC.phaseOutSingle) * CURRENT_CTC.phaseOutRate;
-      const currentTotal = Math.max(0, currentCredit - currentReduction);
-      // Refundable portion
-      const currentRefundable = Math.min(
-        CURRENT_CTC.refundableMax,
-        Math.max(0, inc - CURRENT_CTC.refundablePhaseInThreshold) * CURRENT_CTC.refundablePhaseInRate
+      // Current law CTC value (1 child under 17, HOH filer)
+      // Phase-in at 15% from $2,500 threshold, full credit $2,200, phase-out at 5% from $200k
+      const currentCreditAfterPhaseOut = Math.max(0,
+        CURRENT_CTC.amountUnder17 - Math.max(0, inc - CURRENT_CTC.phaseOutSingle) * CURRENT_CTC.phaseOutRate
       );
-      const currentNet = Math.min(currentTotal, Math.max(currentRefundable, 0));
+      const currentPhaseIn = Math.max(0, (inc - CURRENT_CTC.refundablePhaseInThreshold) * CURRENT_CTC.refundablePhaseInRate);
+      const currentValue = Math.min(currentCreditAfterPhaseOut, currentPhaseIn);
 
-      // Reform CTC (one child under 6)
-      const reformCredit = REFORM_CTC.amountUnder6;
-      const reformReduction = Math.max(0, inc - REFORM_CTC.phaseOutSingle) * CURRENT_CTC.phaseOutRate;
-      const reformTotal = Math.max(0, reformCredit - reformReduction);
-      // Fully refundable with 50% at zero earnings, 30% phase-in
-      const reformRefundable = inc === 0
-        ? reformCredit * REFORM_CTC.zeroEarningsRefundability
-        : Math.min(reformTotal, reformCredit * REFORM_CTC.zeroEarningsRefundability + inc * REFORM_CTC.refundablePhaseInRate);
+      // Reform CTC value (1 child under 6, fully refundable, linear phase-out)
+      // 50% minimum at zero earnings ($1,800), 30% phase-in, linear phase-out $75k→$240k
+      const reformPhaseOutRange = 240000 - REFORM_CTC.phaseOutSingle;
+      const reformCreditAfterPhaseOut = Math.max(0,
+        REFORM_CTC.amountUnder6 - Math.max(0, inc - REFORM_CTC.phaseOutSingle) * (REFORM_CTC.amountUnder6 / reformPhaseOutRange)
+      );
+      const reformPhaseIn = Math.min(REFORM_CTC.amountUnder6,
+        REFORM_CTC.amountUnder6 * REFORM_CTC.zeroEarningsRefundability + inc * REFORM_CTC.refundablePhaseInRate
+      );
+      const reformValue = Math.min(reformCreditAfterPhaseOut, reformPhaseIn);
 
       points.push({
         income: inc,
-        current: currentNet,
-        reform: Math.min(reformTotal, reformRefundable),
+        current: currentValue,
+        reform: reformValue,
       });
     }
     return points;
@@ -164,43 +163,59 @@ export default function PolicyOverview() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
+              <tr className="border-b border-gray-200">
+                <th className="text-left px-3 py-2 font-medium text-gray-900" rowSpan={2}>Parameter</th>
+                <th className="text-center px-3 py-2 font-medium text-gray-900 border-l border-gray-200" colSpan={2}>Single / HOH</th>
+                <th className="text-center px-3 py-2 font-medium text-gray-900 border-l border-gray-200" colSpan={2}>Married filing jointly</th>
+              </tr>
               <tr className="border-b border-gray-300">
-                <th className="text-left px-4 py-3 font-medium text-gray-900">Parameter</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-900">Single</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-900">Married</th>
+                <th className="text-right px-3 py-2 text-xs font-medium text-gray-500 border-l border-gray-200">Current Law</th>
+                <th className="text-right px-3 py-2 text-xs font-medium text-primary-600">Reform</th>
+                <th className="text-right px-3 py-2 text-xs font-medium text-gray-500 border-l border-gray-200">Current Law</th>
+                <th className="text-right px-3 py-2 text-xs font-medium text-primary-600">Reform</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               <tr className="hover:bg-gray-50 transition-colors">
-                <td className="px-4 py-3 text-gray-900">Phase-in rate</td>
-                <td className="px-4 py-3 text-right text-gray-700">34%</td>
-                <td className="px-4 py-3 text-right text-gray-700">34%</td>
+                <td className="px-3 py-2.5 text-gray-900">Phase-in rate</td>
+                <td className="px-3 py-2.5 text-right text-gray-500 border-l border-gray-100">34%</td>
+                <td className="px-3 py-2.5 text-right font-semibold text-primary-700">34%</td>
+                <td className="px-3 py-2.5 text-right text-gray-500 border-l border-gray-100">34%</td>
+                <td className="px-3 py-2.5 text-right font-semibold text-primary-700">34%</td>
               </tr>
               <tr className="hover:bg-gray-50 transition-colors">
-                <td className="px-4 py-3 text-gray-900">Maximum credit</td>
-                <td className="px-4 py-3 text-right text-gray-700">{formatDollarFull(3995)}</td>
-                <td className="px-4 py-3 text-right text-gray-700">{formatDollarFull(4993)}</td>
+                <td className="px-3 py-2.5 text-gray-900">Maximum credit</td>
+                <td className="px-3 py-2.5 text-right text-gray-500 border-l border-gray-100">{formatDollarFull(4427)}</td>
+                <td className="px-3 py-2.5 text-right font-semibold text-primary-700">{formatDollarFull(3995)}</td>
+                <td className="px-3 py-2.5 text-right text-gray-500 border-l border-gray-100">{formatDollarFull(4427)}</td>
+                <td className="px-3 py-2.5 text-right font-semibold text-primary-700">{formatDollarFull(4993)}</td>
               </tr>
               <tr className="hover:bg-gray-50 transition-colors">
-                <td className="px-4 py-3 text-gray-900">Phase-out begins</td>
-                <td className="px-4 py-3 text-right text-gray-700">{formatDollarFull(21560)}</td>
-                <td className="px-4 py-3 text-right text-gray-700">{formatDollarFull(26950)}</td>
+                <td className="px-3 py-2.5 text-gray-900">Phase-out begins</td>
+                <td className="px-3 py-2.5 text-right text-gray-500 border-l border-gray-100">{formatDollarFull(23840)}</td>
+                <td className="px-3 py-2.5 text-right font-semibold text-primary-700">{formatDollarFull(21560)}</td>
+                <td className="px-3 py-2.5 text-right text-gray-500 border-l border-gray-100">{formatDollarFull(31100)}</td>
+                <td className="px-3 py-2.5 text-right font-semibold text-primary-700">{formatDollarFull(26950)}</td>
               </tr>
               <tr className="hover:bg-gray-50 transition-colors">
-                <td className="px-4 py-3 text-gray-900">Full phase-out</td>
-                <td className="px-4 py-3 text-right text-gray-700">{formatDollarFull(46560)}</td>
-                <td className="px-4 py-3 text-right text-gray-700">{formatDollarFull(58195)}</td>
+                <td className="px-3 py-2.5 text-gray-900">Full phase-out</td>
+                <td className="px-3 py-2.5 text-right text-gray-500 border-l border-gray-100">{formatDollarFull(51543)}</td>
+                <td className="px-3 py-2.5 text-right font-semibold text-primary-700">{formatDollarFull(46560)}</td>
+                <td className="px-3 py-2.5 text-right text-gray-500 border-l border-gray-100">{formatDollarFull(58803)}</td>
+                <td className="px-3 py-2.5 text-right font-semibold text-primary-700">{formatDollarFull(58195)}</td>
               </tr>
               <tr className="hover:bg-gray-50 transition-colors">
-                <td className="px-4 py-3 text-gray-900">Phase-out rate</td>
-                <td className="px-4 py-3 text-right text-gray-700">15.98%</td>
-                <td className="px-4 py-3 text-right text-gray-700">15.98%</td>
+                <td className="px-3 py-2.5 text-gray-900">Phase-out rate</td>
+                <td className="px-3 py-2.5 text-right text-gray-500 border-l border-gray-100">15.98%</td>
+                <td className="px-3 py-2.5 text-right font-semibold text-primary-700">15.98%</td>
+                <td className="px-3 py-2.5 text-right text-gray-500 border-l border-gray-100">15.98%</td>
+                <td className="px-3 py-2.5 text-right font-semibold text-primary-700">15.98%</td>
               </tr>
             </tbody>
           </table>
           <p className="text-xs text-gray-500 mt-2">
-            The reform applies a single EITC schedule for all filers with dependent children,
-            regardless of the number of children. This simplifies the current four-bracket system.
+            Current law shown for 1-child schedule. The reform applies a single EITC schedule for all filers
+            with dependent children, regardless of the number of children.
           </p>
         </div>
       </div>
@@ -325,12 +340,12 @@ export default function PolicyOverview() {
               </tr>
               <tr className="hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-3 text-gray-900">Full phase-out (single)</td>
-                <td className="px-4 py-3 text-right text-gray-700">-</td>
+                <td className="px-4 py-3 text-right text-gray-700">{formatDollarFull(244000)}</td>
                 <td className="px-4 py-3 text-right font-semibold text-primary-700">{formatDollarFull(240000)}</td>
               </tr>
               <tr className="hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-3 text-gray-900">Full phase-out (married)</td>
-                <td className="px-4 py-3 text-right text-gray-700">-</td>
+                <td className="px-4 py-3 text-right text-gray-700">{formatDollarFull(444000)}</td>
                 <td className="px-4 py-3 text-right font-semibold text-primary-700">{formatDollarFull(440000)}</td>
               </tr>
             </tbody>
@@ -357,7 +372,7 @@ export default function PolicyOverview() {
               <Line
                 type="monotone"
                 dataKey="current"
-                name="Current law (refundable)"
+                name="Current law"
                 stroke="#9ca3af"
                 strokeWidth={2}
                 strokeDasharray="5 5"

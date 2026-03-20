@@ -110,6 +110,9 @@ function buildReform(): Record<string, Record<string, number | boolean>> {
     "gov.irs.credits.eitc.phase_out.rate[3].amount": { [period]: 0.1598 },
 
     // === Enhanced CTC Reform ===
+    // Enable ARPA CTC addition mechanism
+    "gov.irs.credits.ctc.phase_out.arpa.in_effect": { [period]: true },
+
     // Credit amounts via ARPA-style: $3,600 (ages 0-5) / $3,000 (ages 6-17)
     "gov.irs.credits.ctc.amount.arpa[0].amount": { [period]: 3600 },
     "gov.irs.credits.ctc.amount.arpa[1].amount": { [period]: 3000 },
@@ -120,6 +123,14 @@ function buildReform(): Record<string, Record<string, number | boolean>> {
     "gov.irs.credits.ctc.phase_out.threshold.JOINT": { [period]: 110000 },
     "gov.irs.credits.ctc.phase_out.threshold.SURVIVING_SPOUSE": { [period]: 110000 },
     "gov.irs.credits.ctc.phase_out.threshold.SEPARATE": { [period]: 55000 },
+
+    // ARPA phase-out thresholds aligned to CTC thresholds
+    // (prevents ARPA's own phase-out from conflicting with linear phase-out)
+    "gov.irs.credits.ctc.phase_out.arpa.threshold.SINGLE": { [period]: 75000 },
+    "gov.irs.credits.ctc.phase_out.arpa.threshold.HEAD_OF_HOUSEHOLD": { [period]: 75000 },
+    "gov.irs.credits.ctc.phase_out.arpa.threshold.JOINT": { [period]: 110000 },
+    "gov.irs.credits.ctc.phase_out.arpa.threshold.SURVIVING_SPOUSE": { [period]: 110000 },
+    "gov.irs.credits.ctc.phase_out.arpa.threshold.SEPARATE": { [period]: 55000 },
 
     // Enable linear phase-out structural reform
     "gov.contrib.ctc.linear_phase_out.in_effect": { [period]: true },
@@ -133,6 +144,9 @@ function buildReform(): Record<string, Record<string, number | boolean>> {
 
     // Fully refundable CTC
     "gov.irs.credits.ctc.refundable.fully_refundable": { [period]: true },
+
+    // Raise individual refundable max to cover full ARPA amounts
+    "gov.irs.credits.ctc.refundable.individual_max": { [period]: 3600 },
 
     // Phase-in rate: 30%
     "gov.irs.credits.ctc.refundable.phase_in.rate": { [period]: 0.30 },

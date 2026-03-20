@@ -26,7 +26,7 @@ const US_STATES = [
   { code: 'WI', name: 'Wisconsin' }, { code: 'WY', name: 'Wyoming' }, { code: 'DC', name: 'District of Columbia' },
 ];
 
-const selectStyle = "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22%236b7280%22%3E%3Cpath%20fill-rule%3D%22evenodd%22%20d%3D%22M5.23%207.21a.75.75%200%20011.06.02L10%2011.168l3.71-3.938a.75.75%200%20111.08%201.04l-4.25%204.5a.75.75%200%2001-1.08%200l-4.25-4.5a.75.75%200%2001.02-1.06z%22%20clip-rule%3D%22evenodd%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem] bg-[right_0.5rem_center] bg-no-repeat pr-8";
+const selectStyle = "w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22%236b7280%22%3E%3Cpath%20fill-rule%3D%22evenodd%22%20d%3D%22M5.23%207.21a.75.75%200%20011.06.02L10%2011.168l3.71-3.938a.75.75%200%20111.08%201.04l-4.25%204.5a.75.75%200%2001-1.08%200l-4.25-4.5a.75.75%200%2001.02-1.06z%22%20clip-rule%3D%22evenodd%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem] bg-[right_0.5rem_center] bg-no-repeat pr-8";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'policy' | 'impact' | 'aggregate'>('policy');
@@ -225,13 +225,13 @@ function HouseholdImpactTab() {
       </div>
 
       {/* Inline household config */}
-      <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900 mb-5">Your household</h3>
+      <div className="bg-gray-50 rounded-lg p-5 border border-gray-200">
+        <h3 className="text-sm font-semibold text-gray-900 mb-4">Your household</h3>
 
         {/* Row 1: Income + State */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-xs font-medium text-gray-700 mb-1">
               Employment income
             </label>
             <div className="relative">
@@ -240,13 +240,13 @@ function HouseholdImpactTab() {
                 type="text"
                 value={formatNumber(income)}
                 onChange={(e) => setIncome(parseNumber(e.target.value))}
-                className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-lg"
+                className="w-full pl-7 pr-3 py-1.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">State</label>
             <select
               value={stateCode}
               onChange={(e) => {
@@ -276,7 +276,7 @@ function HouseholdImpactTab() {
         {/* Row 2: Filing status + Ages */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Filing status</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Filing status</label>
             <select
               value={married ? 'married' : 'single'}
               onChange={(e) => handleMarriedChange(e.target.value === 'married')}
@@ -288,7 +288,7 @@ function HouseholdImpactTab() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Your age</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Your age</label>
             <input
               type="number"
               value={ageHead}
@@ -296,13 +296,13 @@ function HouseholdImpactTab() {
               onBlur={() => setAgeHead(Math.max(18, Math.min(100, ageHead)))}
               min={18}
               max={100}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             />
           </div>
 
           {married && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Spouse age</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Spouse age</label>
               <input
                 type="number"
                 value={ageSpouse ?? 35}
@@ -310,7 +310,7 @@ function HouseholdImpactTab() {
                 onBlur={() => setAgeSpouse(prev => prev !== null ? Math.max(18, Math.min(100, prev)) : null)}
                 min={18}
                 max={100}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               />
             </div>
           )}
@@ -318,7 +318,7 @@ function HouseholdImpactTab() {
 
         {/* Row 3: Dependents */}
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Number of dependents</label>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Number of dependents</label>
           <div className="flex items-center gap-4">
             <input
               type="number"
@@ -326,7 +326,7 @@ function HouseholdImpactTab() {
               onChange={(e) => handleDependentCountChange(Math.max(0, Math.min(10, parseInt(e.target.value) || 0)))}
               min={0}
               max={10}
-              className="w-20 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              className="w-20 px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             />
             {dependentAges.length > 0 && (
               <div className="flex items-center gap-2 flex-wrap">

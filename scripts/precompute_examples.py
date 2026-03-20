@@ -142,13 +142,14 @@ def _compute_mtr(net_income, incomes):
             if len(incomes) > 1:
                 d_net = net_income[1] - net_income[0]
                 d_inc = incomes[1] - incomes[0]
-                mtr.append(float(1 - d_net / d_inc) if d_inc > 0 else 0.0)
+                raw = float(1 - d_net / d_inc) if d_inc > 0 else 0.0
             else:
-                mtr.append(0.0)
+                raw = 0.0
         else:
             d_net = net_income[i] - net_income[i - 1]
             d_inc = incomes[i] - incomes[i - 1]
-            mtr.append(float(1 - d_net / d_inc) if d_inc > 0 else 0.0)
+            raw = float(1 - d_net / d_inc) if d_inc > 0 else 0.0
+        mtr.append(max(-1.0, min(1.0, raw)))
     return mtr
 
 

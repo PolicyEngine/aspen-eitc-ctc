@@ -70,6 +70,10 @@ def create_aspen_reform():
                 date_range: 0.1598,
             },
             # === Enhanced CTC Reform ===
+            # Enable ARPA CTC addition
+            "gov.irs.credits.ctc.phase_out.arpa.in_effect": {
+                date_range: True,
+            },
             # ARPA amounts: $3,600 (ages 0-5) / $3,000 (ages 6-17)
             "gov.irs.credits.ctc.amount.arpa[0].amount": {
                 date_range: 3600,
@@ -91,6 +95,23 @@ def create_aspen_reform():
                 date_range: 110000,
             },
             "gov.irs.credits.ctc.phase_out.threshold.SEPARATE": {
+                date_range: 55000,
+            },
+            # ARPA phase-out thresholds must match CTC thresholds
+            # so the ARPA cap = 0 (linear phase-out handles everything)
+            "gov.irs.credits.ctc.phase_out.arpa.threshold.SINGLE": {
+                date_range: 75000,
+            },
+            "gov.irs.credits.ctc.phase_out.arpa.threshold.HEAD_OF_HOUSEHOLD": {
+                date_range: 75000,
+            },
+            "gov.irs.credits.ctc.phase_out.arpa.threshold.JOINT": {
+                date_range: 110000,
+            },
+            "gov.irs.credits.ctc.phase_out.arpa.threshold.SURVIVING_SPOUSE": {
+                date_range: 110000,
+            },
+            "gov.irs.credits.ctc.phase_out.arpa.threshold.SEPARATE": {
                 date_range: 55000,
             },
             # Linear phase-out structural reform
@@ -115,6 +136,10 @@ def create_aspen_reform():
             # Fully refundable CTC
             "gov.irs.credits.ctc.refundable.fully_refundable": {
                 date_range: True,
+            },
+            # Raise individual refundable max to cover full ARPA amounts
+            "gov.irs.credits.ctc.refundable.individual_max": {
+                date_range: 3600,
             },
             # Phase-in: 30% from $0
             "gov.irs.credits.ctc.refundable.phase_in.rate": {

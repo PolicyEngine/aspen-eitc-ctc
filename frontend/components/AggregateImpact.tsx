@@ -12,7 +12,26 @@ import {
   ResponsiveContainer,
   ReferenceLine,
   Cell,
+  Customized,
 } from 'recharts';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function ChartWatermark(props: any) {
+  const { width, height } = props;
+  if (!width || !height) return null;
+  const logoW = 120;
+  const logoH = 120;
+  return (
+    <image
+      href="/policyengine-logo.png"
+      x={width - logoW - 10}
+      y={height - logoH - 10}
+      width={logoW}
+      height={logoH}
+      opacity={0.08}
+    />
+  );
+}
 
 const COLORS = {
   gainMore5: '#285E61',
@@ -319,6 +338,7 @@ export default function AggregateImpact({ triggered }: Props) {
                     <Cell key={i} fill={v >= 0 ? COLORS.positive : COLORS.negative} />
                   ))}
                 </Bar>
+                <Customized component={ChartWatermark} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -383,6 +403,7 @@ export default function AggregateImpact({ triggered }: Props) {
                     {categories.map((c) => (
                       <Bar key={c.key} dataKey={c.key} stackId="a" fill={c.color} name={c.label} />
                     ))}
+                    <Customized component={ChartWatermark} />
                   </BarChart>
                 </ResponsiveContainer>
                 <div className="flex flex-wrap justify-center gap-4 mt-4">
@@ -431,6 +452,7 @@ export default function AggregateImpact({ triggered }: Props) {
                         <Cell key={i} fill={m.ppChange <= 0 ? COLORS.positive : '#EF4444'} />
                       ))}
                     </Bar>
+                    <Customized component={ChartWatermark} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
