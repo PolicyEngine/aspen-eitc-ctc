@@ -10,6 +10,14 @@ async function fetchCSV(filename: string): Promise<Record<string, string | numbe
   return parseCSV(text);
 }
 
+function getMetricValue(
+  rows: Record<string, string | number>[],
+  metric: string
+): number | null {
+  const row = rows.find((item) => item.metric === metric);
+  return typeof row?.value === "number" ? (row.value as number) : null;
+}
+
 function buildAggregateResponse(variant: string, year: number): Promise<AggregateImpactResponse> {
   return Promise.all([
     fetchCSV("distributional_impact.csv"),
@@ -19,10 +27,28 @@ function buildAggregateResponse(variant: string, year: number): Promise<Aggregat
   ]).then(([distributional, metrics, winnersLosers, incomeBrackets]) => {
     const dist = distributional.filter((r) => r.variant === variant && r.year === year);
     const met = metrics.filter((r) => r.variant === variant && r.year === year);
+    const variantMetrics = metrics.filter((r) => r.variant === variant);
     const wl = winnersLosers.filter((r) => r.variant === variant && r.year === year);
     const ib = incomeBrackets.filter((r) => r.variant === variant && r.year === year);
 
     const m = Object.fromEntries(met.map((r) => [r.metric, r.value as number]));
+    const tenYearBudget = {
+      budgetary_impact: variantMetrics
+        .filter((r) => r.metric === "budgetary_impact")
+        .reduce((sum, row) => sum + (row.value as number), 0),
+      federal_tax_revenue_impact: variantMetrics
+        .filter((r) => r.metric === "federal_tax_revenue_impact")
+        .reduce((sum, row) => sum + (row.value as number), 0),
+      state_tax_revenue_impact: variantMetrics
+        .filter((r) => r.metric === "state_tax_revenue_impact")
+        .reduce((sum, row) => sum + (row.value as number), 0),
+      tax_revenue_impact: variantMetrics
+        .filter((r) => r.metric === "tax_revenue_impact")
+        .reduce((sum, row) => sum + (row.value as number), 0),
+      benefit_spending_impact: variantMetrics
+        .filter((r) => r.metric === "benefit_spending_impact")
+        .reduce((sum, row) => sum + (row.value as number), 0),
+    };
 
     const decileAverage: Record<string, number> = {};
     const decileRelative: Record<string, number> = {};
@@ -61,16 +87,38 @@ function buildAggregateResponse(variant: string, year: number): Promise<Aggregat
         benefit_spending_impact: m.benefit_spending_impact,
         households: m.households,
       },
+      ten_year_budget: tenYearBudget,
       decile: { average: decileAverage, relative: decileRelative },
       intra_decile: { all: intraAll, deciles: intraDeciles },
+      inequality: {
+        gini: {
+          baseline: getMetricValue(met, "gini_baseline"),
+          reform: getMetricValue(met, "gini_reform"),
+          change: getMetricValue(met, "gini_change"),
+        },
+        top_10_pct_share: {
+          baseline: getMetricValue(met, "top_10_pct_share_baseline"),
+          reform: getMetricValue(met, "top_10_pct_share_reform"),
+          change: getMetricValue(met, "top_10_pct_share_change"),
+        },
+        top_1_pct_share: {
+          baseline: getMetricValue(met, "top_1_pct_share_baseline"),
+          reform: getMetricValue(met, "top_1_pct_share_reform"),
+          change: getMetricValue(met, "top_1_pct_share_change"),
+        },
+      },
       poverty: {
         poverty: {
           all: { baseline: m.poverty_baseline_rate, reform: m.poverty_reform_rate },
           child: { baseline: m.child_poverty_baseline_rate, reform: m.child_poverty_reform_rate },
+          adult: { baseline: m.adult_poverty_baseline_rate, reform: m.adult_poverty_reform_rate },
+          senior: { baseline: m.senior_poverty_baseline_rate, reform: m.senior_poverty_reform_rate },
         },
         deep_poverty: {
           all: { baseline: m.deep_poverty_baseline_rate, reform: m.deep_poverty_reform_rate },
           child: { baseline: m.deep_child_poverty_baseline_rate, reform: m.deep_child_poverty_reform_rate },
+          adult: { baseline: m.deep_adult_poverty_baseline_rate, reform: m.deep_adult_poverty_reform_rate },
+          senior: { baseline: m.deep_senior_poverty_baseline_rate, reform: m.deep_senior_poverty_reform_rate },
         },
       },
       total_cost: m.total_cost,

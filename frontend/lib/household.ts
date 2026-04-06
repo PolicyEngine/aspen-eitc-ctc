@@ -18,17 +18,24 @@ function addMemberToUnits(situation: Record<string, any>, memberId: string) {
 export function buildHouseholdSituation(params: HouseholdRequest): Record<string, any> {
   const { age_head, age_spouse, dependent_ages, income, year, max_earnings, state_code, in_nyc } = params;
   const yearStr = String(year);
-  const axisMax = Math.max(max_earnings, income);
+  const axisMax = Math.max(max_earnings, 200_000, 2 * income);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const situation: Record<string, any> = {
-    people: { you: { age: { [yearStr]: age_head }, employment_income: { [yearStr]: null } } },
+    people: {
+      you: {
+        age: { [yearStr]: age_head },
+        employment_income: { [yearStr]: null },
+        marginal_tax_rate: { [yearStr]: null },
+      },
+    },
     families: { "your family": { members: ["you"] } },
     marital_units: { "your marital unit": { members: ["you"] } },
     spm_units: { "your household": { members: ["you"] } },
     tax_units: {
       "your tax unit": {
         members: ["you"],
+        eitc_child_count: { [yearStr]: null },
       },
     },
     households: {
@@ -50,7 +57,7 @@ export function buildHouseholdSituation(params: HouseholdRequest): Record<string
         name: "employment_income",
         min: 0,
         max: axisMax,
-        count: Math.min(4001, Math.max(501, Math.floor(axisMax / 500))),
+        count: 401,
         period: yearStr,
       },
     ],

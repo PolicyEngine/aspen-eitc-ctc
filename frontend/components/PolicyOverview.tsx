@@ -43,7 +43,6 @@ const REFORM_CTC = {
   amount6to17: 3000,
   phaseOutSingle: 75000,
   phaseOutJoint: 110000,
-  fullyRefundable: true,
   refundablePhaseInRate: 0.30,
   refundablePhaseInThreshold: 0,
   zeroEarningsRefundability: 0.50,
@@ -106,7 +105,7 @@ export default function PolicyOverview() {
       const currentPhaseIn = Math.max(0, (inc - CURRENT_CTC.refundablePhaseInThreshold) * CURRENT_CTC.refundablePhaseInRate);
       const currentValue = Math.min(currentCreditAfterPhaseOut, currentPhaseIn);
 
-      // Reform CTC value (1 child under 6, fully refundable, linear phase-out)
+      // Reform CTC value (1 child under 6, 50% refundable floor, linear phase-out)
       // 50% minimum at zero earnings ($1,800), 30% phase-in, linear phase-out $75k→$240k
       const reformPhaseOutRange = 240000 - REFORM_CTC.phaseOutSingle;
       const reformCreditAfterPhaseOut = Math.max(0,

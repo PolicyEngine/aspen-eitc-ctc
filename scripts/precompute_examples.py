@@ -12,11 +12,17 @@ import json
 import os
 import sys
 
-import numpy as np
-from policyengine_core.reforms import Reform
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from policyengine_bootstrap import (
+    bootstrap_policyengine_us,
+    disable_automatic_structural_reforms,
+)
+
+bootstrap_policyengine_us()
+disable_automatic_structural_reforms()
+
 from policyengine_us import Simulation
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from reforms import create_aspen_reform
 
 OUTPUT_DIR = os.path.join(
@@ -135,24 +141,6 @@ def _build_situation(ex: dict) -> dict:
     return situation
 
 
-def _compute_mtr(net_income, incomes):
-    mtr = []
-    for i in range(len(net_income)):
-        if i == 0:
-            if len(incomes) > 1:
-                d_net = net_income[1] - net_income[0]
-                d_inc = incomes[1] - incomes[0]
-                raw = float(1 - d_net / d_inc) if d_inc > 0 else 0.0
-            else:
-                raw = 0.0
-        else:
-            d_net = net_income[i] - net_income[i - 1]
-            d_inc = incomes[i] - incomes[i - 1]
-            raw = float(1 - d_net / d_inc) if d_inc > 0 else 0.0
-        mtr.append(max(-1.0, min(1.0, raw)))
-    return mtr
-
-
 def _interpolate(xs, ys, x):
     if x <= xs[0]:
         return ys[0]
@@ -192,7 +180,7 @@ def _extract_axis_values(sim, variable, year, situation):
 def precompute_example(ex: dict) -> dict:
     """Compute full household impact response for one example."""
     situation = _build_situation(ex)
-    reform = (create_aspen_reform(),)
+    reform = create_aspen_reform()
 
     print("  Running baseline...")
     sim_baseline = Simulation(situation=situation)
@@ -209,12 +197,16 @@ def precompute_example(ex: dict) -> dict:
     reform_net = _extract_axis_values(
         sim_reform, "household_net_income", YEAR, situation
     )
+    baseline_mtr = _extract_axis_values(
+        sim_baseline, "marginal_tax_rate", YEAR, situation
+    )
+    reform_mtr = _extract_axis_values(
+        sim_reform, "marginal_tax_rate", YEAR, situation
+    )
 
     net_income_change = [
         reform_net[i] - baseline_net[i] for i in range(len(baseline_net))
     ]
-    baseline_mtr = _compute_mtr(baseline_net, income_range)
-    reform_mtr = _compute_mtr(reform_net, income_range)
 
     baseline_at = _interpolate(income_range, baseline_net, ex["income"])
     reform_at = _interpolate(income_range, reform_net, ex["income"])

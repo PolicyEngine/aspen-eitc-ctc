@@ -43,6 +43,14 @@ export interface BudgetImpact {
   households: number;
 }
 
+export interface TenYearBudgetImpact {
+  budgetary_impact: number;
+  federal_tax_revenue_impact: number;
+  state_tax_revenue_impact: number;
+  tax_revenue_impact: number;
+  benefit_spending_impact: number;
+}
+
 export interface DecileImpact {
   average: Record<string, number>;
   relative: Record<string, number>;
@@ -77,6 +85,8 @@ export interface PovertyGroup {
 export interface PovertyCategory {
   all: PovertyGroup;
   child: PovertyGroup;
+  adult: PovertyGroup;
+  senior: PovertyGroup;
 }
 
 export interface PovertyImpact {
@@ -84,10 +94,30 @@ export interface PovertyImpact {
   deep_poverty: PovertyCategory;
 }
 
+export interface GiniImpact {
+  baseline: number | null;
+  reform: number | null;
+  change: number | null;
+}
+
+export interface ShareImpact {
+  baseline: number | null;
+  reform: number | null;
+  change: number | null;
+}
+
+export interface InequalityImpact {
+  gini: GiniImpact;
+  top_10_pct_share: ShareImpact;
+  top_1_pct_share: ShareImpact;
+}
+
 export interface AggregateImpactResponse {
   budget: BudgetImpact;
+  ten_year_budget: TenYearBudgetImpact;
   decile: DecileImpact;
   intra_decile: IntraDecile;
+  inequality: InequalityImpact;
   poverty: PovertyImpact;
   total_cost: number;
   beneficiaries: number;

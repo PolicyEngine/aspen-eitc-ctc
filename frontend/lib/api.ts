@@ -71,9 +71,14 @@ async function peCalculate(body: Record<string, any>): Promise<any> {
  * - Phase-out start: $21,560 (single); joint bonus = $5,390
  * - Phase-out rate: 15.98% for all child brackets
  *
+ * The public household API cannot express "preserve current-law childless
+ * EITC" using parameter overrides alone. After requesting the structural
+ * reform, the calculator patches any axes points with `eitc_child_count = 0`
+ * back to the baseline path.
+ *
  * Enhanced CTC (uses contrib structural reform + IRS parameter overrides):
  * - Credit amounts: $3,600 (ages 0-5) / $3,000 (ages 6-17) via ARPA amounts
- * - Fully refundable with 30% phase-in rate from $0
+ * - 50% refundable at zero earnings, then 30% phase-in from $0
  * - gov.contrib.ctc.linear_phase_out.in_effect = true (linear phase-out)
  * - Phase-out thresholds: $75,000 (single/HOH) / $110,000 (married)
  * - Full phase-out: $240,000 (single) / $440,000 (married)
@@ -142,9 +147,6 @@ function buildReform(): Record<string, Record<string, number | boolean>> {
     "gov.contrib.ctc.linear_phase_out.end.SURVIVING_SPOUSE": { [period]: 440000 },
     "gov.contrib.ctc.linear_phase_out.end.SEPARATE": { [period]: 175000 },
 
-    // Fully refundable CTC
-    "gov.irs.credits.ctc.refundable.fully_refundable": { [period]: true },
-
     // Raise individual refundable max to cover full ARPA amounts
     "gov.irs.credits.ctc.refundable.individual_max": { [period]: 3600 },
 
@@ -172,6 +174,26 @@ function interpolate(xs: number[], ys: number[], x: number): number {
     }
   }
   return ys[ys.length - 1];
+}
+
+function computeMTRFallback(netIncome: number[], incomes: number[]): number[] {
+  const mtr: number[] = [];
+  for (let i = 0; i < netIncome.length; i++) {
+    if (i === 0) {
+      if (incomes.length > 1) {
+        const dNet = netIncome[1] - netIncome[0];
+        const dInc = incomes[1] - incomes[0];
+        mtr.push(dInc > 0 ? 1 - dNet / dInc : 0);
+      } else {
+        mtr.push(0);
+      }
+    } else {
+      const dNet = netIncome[i] - netIncome[i - 1];
+      const dInc = incomes[i] - incomes[i - 1];
+      mtr.push(dInc > 0 ? 1 - dNet / dInc : 0);
+    }
+  }
+  return mtr;
 }
 
 export const api = {
@@ -208,45 +230,43 @@ export const api = {
     // Extract employment income x-axis values (person-level variable)
     const incomeRange: number[] =
       baselineResult.result.people["you"]["employment_income"][yearStr];
+    const eitcChildCount: number[] =
+      baselineResult.result.tax_units["your tax unit"]["eitc_child_count"][yearStr];
+    const baselineMTRRaw: number[] | undefined =
+      baselineResult.result.people["you"]["marginal_tax_rate"]?.[yearStr];
+    const reformMTRRaw: number[] | undefined =
+      reformResult.result.people["you"]["marginal_tax_rate"]?.[yearStr];
+
+    const baselineMTR =
+      baselineMTRRaw ?? computeMTRFallback(baselineNetIncome, incomeRange);
+    const unpatchedReformMTR =
+      reformMTRRaw ?? computeMTRFallback(reformNetIncome, incomeRange);
+    const patchedReformNetIncome = reformNetIncome.map(
+      (value: number, i: number) =>
+        eitcChildCount[i] > 0 ? value : baselineNetIncome[i]
+    );
+    const reformMTR = unpatchedReformMTR.map((value: number, i: number) =>
+      eitcChildCount[i] > 0 ? value : baselineMTR[i]
+    );
 
     // Compute element-wise net income change
-    const netIncomeChange = reformNetIncome.map(
+    const netIncomeChange = patchedReformNetIncome.map(
       (val: number, i: number) => val - baselineNetIncome[i]
     );
 
-    // Compute marginal tax rates: MTR = 1 - d(net_income)/d(employment_income)
-    const computeMTR = (netIncome: number[], incomes: number[]): number[] => {
-      const mtr: number[] = [];
-      for (let i = 0; i < netIncome.length; i++) {
-        if (i === 0) {
-          if (incomes.length > 1) {
-            const dNet = netIncome[1] - netIncome[0];
-            const dInc = incomes[1] - incomes[0];
-            mtr.push(dInc > 0 ? 1 - dNet / dInc : 0);
-          } else {
-            mtr.push(0);
-          }
-        } else {
-          const dNet = netIncome[i] - netIncome[i - 1];
-          const dInc = incomes[i] - incomes[i - 1];
-          mtr.push(dInc > 0 ? 1 - dNet / dInc : 0);
-        }
-      }
-      return mtr;
-    };
-
-    const baselineMTR = computeMTR(baselineNetIncome, incomeRange);
-    const reformMTR = computeMTR(reformNetIncome, incomeRange);
-
     // Interpolate point estimate at user's income
     const baselineAtIncome = interpolate(incomeRange, baselineNetIncome, request.income);
-    const reformAtIncome = interpolate(incomeRange, reformNetIncome, request.income);
+    const reformAtIncome = interpolate(
+      incomeRange,
+      patchedReformNetIncome,
+      request.income
+    );
 
     return {
       income_range: incomeRange,
       net_income_change: netIncomeChange,
       baseline_net_income: baselineNetIncome,
-      reform_net_income: reformNetIncome,
+      reform_net_income: patchedReformNetIncome,
       baseline_mtr: baselineMTR,
       reform_mtr: reformMTR,
       benefit_at_income: {
@@ -254,7 +274,7 @@ export const api = {
         reform: reformAtIncome,
         difference: reformAtIncome - baselineAtIncome,
       },
-      x_axis_max: request.max_earnings,
+      x_axis_max: incomeRange[incomeRange.length - 1] ?? request.max_earnings,
     };
   },
 };

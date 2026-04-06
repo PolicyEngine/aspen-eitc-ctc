@@ -9,10 +9,13 @@ Caches each year's results to disk so interrupted runs resume where they
 left off. Use --fresh to ignore the cache and recompute everything.
 
 Usage:
-    python scripts/pipeline.py           # resumes from cache
-    python scripts/pipeline.py --fresh   # recomputes everything
+    python scripts/pipeline.py                    # sequential resume from cache
+    python scripts/pipeline.py --fresh           # clear cache, then resume
+    python scripts/pipeline.py --year 2027       # compute one year and cache it
+    python scripts/pipeline.py --compile-only    # rebuild CSVs from cache only
 """
 
+import argparse
 import gc
 import json
 import os
@@ -73,6 +76,13 @@ def _save_cache(year: int, result: dict) -> None:
         json.dump(result, f)
 
 
+def _normalize_cached_year_result(cached: dict | None) -> dict:
+    """Return a year-result dict keyed by variant labels."""
+    if not isinstance(cached, dict):
+        return {}
+    return {k: v for k, v in cached.items() if k in {label for _, label in VARIANTS}}
+
+
 def _extract_distributional(
     result: dict, variant: str, year: int
 ) -> list[dict]:
@@ -112,6 +122,56 @@ def _extract_metrics(result: dict, variant: str, year: int) -> list[dict]:
             "baseline_net_income",
             result["budget"].get("baseline_net_income", 0),
         ),
+        (
+            "gini_baseline",
+            result.get("inequality", {})
+            .get("gini", {})
+            .get("baseline"),
+        ),
+        (
+            "gini_reform",
+            result.get("inequality", {}).get("gini", {}).get("reform"),
+        ),
+        (
+            "gini_change",
+            result.get("inequality", {}).get("gini", {}).get("change"),
+        ),
+        (
+            "top_10_pct_share_baseline",
+            result.get("inequality", {})
+            .get("top_10_pct_share", {})
+            .get("baseline"),
+        ),
+        (
+            "top_10_pct_share_reform",
+            result.get("inequality", {})
+            .get("top_10_pct_share", {})
+            .get("reform"),
+        ),
+        (
+            "top_10_pct_share_change",
+            result.get("inequality", {})
+            .get("top_10_pct_share", {})
+            .get("change"),
+        ),
+        (
+            "top_1_pct_share_baseline",
+            result.get("inequality", {})
+            .get("top_1_pct_share", {})
+            .get("baseline"),
+        ),
+        (
+            "top_1_pct_share_reform",
+            result.get("inequality", {})
+            .get("top_1_pct_share", {})
+            .get("reform"),
+        ),
+        (
+            "top_1_pct_share_change",
+            result.get("inequality", {})
+            .get("top_1_pct_share", {})
+            .get("change"),
+        ),
         ("households", result["budget"]["households"]),
         ("total_cost", result["total_cost"]),
         ("beneficiaries", result["beneficiaries"]),
@@ -134,6 +194,16 @@ def _extract_metrics(result: dict, variant: str, year: int) -> list[dict]:
             "child_poverty_percent_change",
             result["child_poverty_percent_change"],
         ),
+        (
+            "adult_poverty_baseline_rate",
+            result["adult_poverty_baseline_rate"],
+        ),
+        ("adult_poverty_reform_rate", result["adult_poverty_reform_rate"]),
+        (
+            "senior_poverty_baseline_rate",
+            result["senior_poverty_baseline_rate"],
+        ),
+        ("senior_poverty_reform_rate", result["senior_poverty_reform_rate"]),
         ("deep_poverty_baseline_rate", result["deep_poverty_baseline_rate"]),
         ("deep_poverty_reform_rate", result["deep_poverty_reform_rate"]),
         ("deep_poverty_rate_change", result["deep_poverty_rate_change"]),
@@ -156,6 +226,22 @@ def _extract_metrics(result: dict, variant: str, year: int) -> list[dict]:
         (
             "deep_child_poverty_percent_change",
             result["deep_child_poverty_percent_change"],
+        ),
+        (
+            "deep_adult_poverty_baseline_rate",
+            result["deep_adult_poverty_baseline_rate"],
+        ),
+        (
+            "deep_adult_poverty_reform_rate",
+            result["deep_adult_poverty_reform_rate"],
+        ),
+        (
+            "deep_senior_poverty_baseline_rate",
+            result["deep_senior_poverty_baseline_rate"],
+        ),
+        (
+            "deep_senior_poverty_reform_rate",
+            result["deep_senior_poverty_reform_rate"],
         ),
     ]
     return [
@@ -216,6 +302,36 @@ def _extract_income_brackets(
     ]
 
 
+def _frames_from_results(
+    year_results_map: dict[int, dict]
+) -> dict[str, pd.DataFrame]:
+    all_distributional = []
+    all_metrics = []
+    all_winners_losers = []
+    all_income_brackets = []
+
+    for year in sorted(year_results_map):
+        year_results = year_results_map[year]
+        for variant, result in year_results.items():
+            all_distributional.extend(
+                _extract_distributional(result, variant, year)
+            )
+            all_metrics.extend(_extract_metrics(result, variant, year))
+            all_winners_losers.extend(
+                _extract_winners_losers(result, variant, year)
+            )
+            all_income_brackets.extend(
+                _extract_income_brackets(result, variant, year)
+            )
+
+    return {
+        "distributional_impact": pd.DataFrame(all_distributional),
+        "metrics": pd.DataFrame(all_metrics),
+        "winners_losers": pd.DataFrame(all_winners_losers),
+        "income_brackets": pd.DataFrame(all_income_brackets),
+    }
+
+
 def _run_year_in_process(year: int) -> dict:
     """Run all variants for a single year, then free memory."""
     from microsimulation import calculate_aggregate_impact
@@ -248,10 +364,85 @@ def _run_year_subprocess(year: int) -> dict:
     return json.loads(proc.stdout)
 
 
+def compute_year(
+    year: int,
+    use_subprocess: bool = False,
+    force_recompute: bool = False,
+) -> dict:
+    """Compute one year and persist it to cache immediately."""
+    if force_recompute:
+        cached = {}
+    else:
+        cached = _normalize_cached_year_result(_load_cached(year))
+
+    expected_variants = [label for _, label in VARIANTS]
+    missing_variants = [label for label in expected_variants if label not in cached]
+    if not missing_variants:
+        print(f"Year {year} already cached.")
+        return cached
+
+    print(f"Computing year {year}...")
+    if use_subprocess and not cached:
+        result = _run_year_subprocess(year)
+        _save_cache(year, result)
+        print(f"Year {year} complete and cached.")
+        return result
+
+    from microsimulation import calculate_aggregate_impact
+
+    result = dict(cached)
+    variant_config = {label: cbo_lsr for cbo_lsr, label in VARIANTS}
+    for variant in missing_variants:
+        print(f"  Computing {variant}...")
+        result[variant] = calculate_aggregate_impact(
+            year=year, cbo_lsr=variant_config[variant]
+        )
+        _save_cache(year, result)
+        gc.collect()
+
+    print(f"Year {year} complete and cached.")
+    return result
+
+
+def compile_cached_data(
+    output_dir: str = None,
+    years: list[int] | None = None,
+) -> dict[str, pd.DataFrame]:
+    """Build CSV outputs from cached yearly results only."""
+    output_dir = output_dir or DEFAULT_OUTPUT_DIR
+    years = years or YEARS
+
+    results_by_year = {}
+    missing_years = []
+    for year in years:
+        cached = _load_cached(year)
+        normalized = _normalize_cached_year_result(cached)
+        if any(label not in normalized for _, label in VARIANTS):
+            missing_years.append(year)
+        else:
+            results_by_year[year] = normalized
+
+    if missing_years:
+        missing = ", ".join(str(year) for year in missing_years)
+        raise RuntimeError(
+            f"Missing cached results for year(s): {missing}. "
+            "Compute them first with --year."
+        )
+
+    results = _frames_from_results(results_by_year)
+    for name, df in results.items():
+        _save_csv(df, os.path.join(output_dir, f"{name}.csv"))
+
+    print(f"\nAll data saved to {output_dir}/")
+    print(f"Compiled from cache at {CACHE_DIR}/")
+    return results
+
+
 def generate_all_data(
     output_dir: str = None,
-    use_subprocess: bool = True,
+    use_subprocess: bool = False,
     fresh: bool = False,
+    years: list[int] | None = None,
 ) -> dict[str, pd.DataFrame]:
     """Generate all dashboard data as CSVs for all years and variants.
 
@@ -259,62 +450,57 @@ def generate_all_data(
     runs can resume. Pass fresh=True to clear the cache and recompute.
     """
     output_dir = output_dir or DEFAULT_OUTPUT_DIR
+    years = years or YEARS
 
     if fresh and os.path.exists(CACHE_DIR):
         shutil.rmtree(CACHE_DIR)
         print("Cleared cache.")
 
-    all_distributional = []
-    all_metrics = []
-    all_winners_losers = []
-    all_income_brackets = []
+    results_by_year = {}
+    for i, year in enumerate(years):
+        print(f"\n[{i + 1}/{len(years)}] Year {year}...")
+        results_by_year[year] = compute_year(
+            year=year,
+            use_subprocess=use_subprocess,
+            force_recompute=fresh,
+        )
 
-    for i, year in enumerate(YEARS):
-        print(f"\n[{i + 1}/{len(YEARS)}] Year {year}...", end="")
-
-        cached = _load_cached(year)
-        if cached is not None:
-            print(" (cached)")
-            year_results = cached
-        else:
-            print()
-            if use_subprocess:
-                year_results = _run_year_subprocess(year)
-            else:
-                year_results = _run_year_in_process(year)
-
-            _save_cache(year, year_results)
-            print(f"  Year {year} complete (cached for resume).")
-
-        for variant, result in year_results.items():
-            all_distributional.extend(
-                _extract_distributional(result, variant, year)
-            )
-            all_metrics.extend(_extract_metrics(result, variant, year))
-            all_winners_losers.extend(
-                _extract_winners_losers(result, variant, year)
-            )
-            all_income_brackets.extend(
-                _extract_income_brackets(result, variant, year)
-            )
-
-    results = {
-        "distributional_impact": pd.DataFrame(all_distributional),
-        "metrics": pd.DataFrame(all_metrics),
-        "winners_losers": pd.DataFrame(all_winners_losers),
-        "income_brackets": pd.DataFrame(all_income_brackets),
-    }
-
-    for name, df in results.items():
-        _save_csv(df, os.path.join(output_dir, f"{name}.csv"))
-
-    print(f"\nAll data saved to {output_dir}/")
-    print(
-        f"Cache at {CACHE_DIR}/ — delete it or run with --fresh to recompute."
-    )
-    return results
+    return compile_cached_data(output_dir=output_dir, years=years)
 
 
 if __name__ == "__main__":
-    fresh = "--fresh" in sys.argv
-    generate_all_data(fresh=fresh)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--fresh", action="store_true")
+    parser.add_argument("--year", type=int)
+    parser.add_argument("--from-year", dest="from_year", type=int)
+    parser.add_argument("--to-year", dest="to_year", type=int)
+    parser.add_argument("--compile-only", action="store_true")
+    parser.add_argument("--subprocess", action="store_true")
+    args = parser.parse_args()
+
+    selected_years = YEARS
+    if args.year is not None:
+        selected_years = [args.year]
+    elif args.from_year is not None or args.to_year is not None:
+        start_year = args.from_year or YEARS[0]
+        end_year = args.to_year or YEARS[-1]
+        selected_years = [
+            year for year in YEARS if start_year <= year <= end_year
+        ]
+
+    if args.compile_only:
+        compile_cached_data(years=selected_years)
+    elif args.year is not None:
+        if args.fresh and os.path.exists(_cache_path(args.year)):
+            os.remove(_cache_path(args.year))
+        compute_year(
+            year=args.year,
+            use_subprocess=args.subprocess,
+            force_recompute=False,
+        )
+    else:
+        generate_all_data(
+            fresh=args.fresh,
+            use_subprocess=args.subprocess,
+            years=selected_years,
+        )

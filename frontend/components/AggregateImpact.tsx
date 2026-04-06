@@ -82,7 +82,7 @@ export default function AggregateImpact({ triggered }: Props) {
   const [selectedYear, setSelectedYear] = useState(2026);
   const [scoringMode, setScoringMode] = useState<'static' | 'dynamic'>('static');
   const { data, isLoading, error } = useAggregateImpact(triggered, scoringMode, selectedYear);
-  const [activeSection, setActiveSection] = useState<'fiscal' | 'distributional' | 'winners' | 'poverty'>('fiscal');
+  const [activeSection, setActiveSection] = useState<'fiscal' | 'distributional' | 'winners' | 'poverty' | 'inequality'>('fiscal');
   const [distMode, setDistMode] = useState<'relative' | 'absolute'>('relative');
 
   if (!triggered) return null;
@@ -127,12 +127,19 @@ export default function AggregateImpact({ triggered }: Props) {
     if (abs >= 1e6) return `${sign}$${(abs / 1e6).toFixed(1)}M`;
     return formatCurrencyWithSign(value);
   };
+  const formatGini = (value: number) => value.toFixed(3);
+  const formatShare = (value: number) => `${(value * 100).toFixed(1)}%`;
+  const hasInequality =
+    data.inequality.gini.baseline !== null &&
+    data.inequality.gini.reform !== null &&
+    data.inequality.gini.change !== null;
 
   const sections = [
     { key: 'fiscal' as const, label: 'Budgetary impact' },
     { key: 'distributional' as const, label: 'Distributional impact' },
     { key: 'winners' as const, label: 'Winners & losers' },
     { key: 'poverty' as const, label: 'Poverty impact' },
+    { key: 'inequality' as const, label: 'Inequality' },
   ];
 
   return (
@@ -228,6 +235,29 @@ export default function AggregateImpact({ triggered }: Props) {
             ))}
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { label: 'Federal tax revenue', value: data.ten_year_budget.federal_tax_revenue_impact },
+              { label: 'State/local tax revenue', value: data.ten_year_budget.state_tax_revenue_impact },
+              { label: 'Benefit spending', value: -data.ten_year_budget.benefit_spending_impact },
+              { label: 'Net budgetary impact', value: data.ten_year_budget.budgetary_impact },
+            ].map(({ label, value }) => (
+              <div
+                key={label}
+                className={`rounded-lg p-6 border ${
+                  value >= 0 ? 'bg-green-50 border-success' : 'bg-red-50 border-red-300'
+                }`}
+              >
+                <p className="text-sm text-gray-700 mb-2">{label} (2026-2035)</p>
+                <p className={`text-3xl font-bold ${
+                  value >= 0 ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  {formatBillions(value)}
+                </p>
+              </div>
+            ))}
+          </div>
+
           <div>
             <h3 className="text-xl font-bold text-gray-800 mb-4">Impact by income bracket</h3>
             <div className="overflow-x-auto">
@@ -259,6 +289,51 @@ export default function AggregateImpact({ triggered }: Props) {
               </table>
             </div>
           </div>
+        </div>
+      )}
+
+      {activeSection === 'inequality' && (
+        <div className="space-y-6">
+          {!hasInequality ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-6">
+              <h3 className="text-lg font-semibold text-amber-900 mb-2">Inequality data unavailable</h3>
+              <p className="text-sm text-amber-800">
+                Regenerate the aggregate CSVs with <code>python scripts/pipeline.py --fresh</code> to populate Gini outputs.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              {[
+                { label: 'Baseline Gini', value: data.inequality.gini.baseline! },
+                { label: 'Reform Gini', value: data.inequality.gini.reform! },
+                { label: 'Change in Gini', value: data.inequality.gini.change! },
+                { label: 'Baseline Top 10% Share', value: data.inequality.top_10_pct_share.baseline, type: 'share' as const },
+                { label: 'Reform Top 10% Share', value: data.inequality.top_10_pct_share.reform, type: 'share' as const },
+                { label: 'Baseline Top 1% Share', value: data.inequality.top_1_pct_share.baseline, type: 'share' as const },
+                { label: 'Reform Top 1% Share', value: data.inequality.top_1_pct_share.reform, type: 'share' as const },
+              ]
+                .filter(
+                  (item): item is { label: string; value: number; type?: 'share' } =>
+                    item.value !== null
+                )
+                .map(({ label, value }) => (
+                <div key={label} className="rounded-lg p-6 border bg-gray-50 border-gray-200">
+                  <p className="text-sm text-gray-700 mb-2">{label} ({selectedYear})</p>
+                  <p className={`text-3xl font-bold ${
+                    label === 'Change in Gini'
+                      ? value <= 0 ? 'text-green-600' : 'text-red-600'
+                      : 'text-gray-900'
+                  }`}>
+                    {label === 'Change in Gini'
+                      ? `${value >= 0 ? '+' : ''}${formatGini(value)}`
+                      : label.includes('Share')
+                        ? formatShare(value!)
+                        : formatGini(value!)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -355,6 +430,11 @@ export default function AggregateImpact({ triggered }: Props) {
           { key: 'lose_less_than_5pct', label: 'Lose less than 5%', color: COLORS.loseLess5 },
           { key: 'lose_more_than_5pct', label: 'Lose more than 5%', color: COLORS.loseMore5 },
         ] as const;
+        const winnersShare =
+          (intra.all.gain_more_than_5pct + intra.all.gain_less_than_5pct) * 100;
+        const losersShare =
+          (intra.all.lose_more_than_5pct + intra.all.lose_less_than_5pct) * 100;
+        const noChangeShare = intra.all.no_change * 100;
 
         const stackedData = [
           {
@@ -375,18 +455,18 @@ export default function AggregateImpact({ triggered }: Props) {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="rounded-lg p-6 border" style={{ backgroundColor: '#F0FDFA', borderColor: COLORS.positive }}>
                 <p className="text-sm text-gray-700 mb-2">Winners</p>
-                <p className="text-3xl font-bold" style={{ color: COLORS.gainMore5 }}>{data.winners_rate.toFixed(1)}%</p>
+                <p className="text-3xl font-bold" style={{ color: COLORS.gainMore5 }}>{winnersShare.toFixed(1)}%</p>
                 <p className="text-xs text-gray-600 mt-1">{Math.round(data.winners).toLocaleString()} households gain</p>
               </div>
               <div className="bg-gray-50 rounded-lg p-6 border border-gray-300">
                 <p className="text-sm text-gray-700 mb-2">No Change</p>
                 <p className="text-3xl font-bold text-gray-600">
-                  {(100 - data.winners_rate - data.losers_rate).toFixed(1)}%
+                  {noChangeShare.toFixed(1)}%
                 </p>
               </div>
               <div className="rounded-lg p-6 border" style={{ backgroundColor: '#F9FAFB', borderColor: COLORS.loseMore5 }}>
                 <p className="text-sm text-gray-700 mb-2">Losers</p>
-                <p className="text-3xl font-bold" style={{ color: COLORS.loseMore5 }}>{data.losers_rate.toFixed(1)}%</p>
+                <p className="text-3xl font-bold" style={{ color: COLORS.loseMore5 }}>{losersShare.toFixed(1)}%</p>
                 <p className="text-xs text-gray-600 mt-1">{Math.round(data.losers).toLocaleString()} households lose</p>
               </div>
             </div>
@@ -432,7 +512,7 @@ export default function AggregateImpact({ triggered }: Props) {
 
         const chartData = povertyMetrics.map((m) => ({
           ...m,
-          ppChange: m.reform - m.baseline,
+          ppChange: (m.reform - m.baseline) * 100,
         }));
 
         return (

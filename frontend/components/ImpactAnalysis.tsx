@@ -286,8 +286,8 @@ function MTRChart({ data, xMax, income, year }: ChartProps) {
   const chartData = data.income_range
     .map((inc, i) => ({
       income: inc,
-      baseline: Math.max(-1, Math.min(1, data.baseline_mtr[i])),
-      reform: Math.max(-1, Math.min(1, data.reform_mtr[i])),
+      baseline: Math.max(-2, Math.min(2, data.baseline_mtr[i])),
+      reform: Math.max(-2, Math.min(2, data.reform_mtr[i])),
     }))
     .filter((d) => d.income <= xMax);
 
@@ -360,7 +360,7 @@ function MTRChart({ data, xMax, income, year }: ChartProps) {
         </h3>
         <p className="text-sm text-gray-500 mb-4">
           The effective marginal tax rate on each additional dollar earned, accounting for taxes and benefit phase-outs.
-          Values are clamped to the -100% to 100% range.
+          Values are clamped to the -200% to 200% range.
         </p>
         <ResponsiveContainer width="100%" height={400}>
           <LineChart data={chartData} margin={{ left: 30, right: 20, top: 5, bottom: 5 }}>
@@ -369,7 +369,7 @@ function MTRChart({ data, xMax, income, year }: ChartProps) {
               domain={[0, xMax]} allowDecimals={false}
             />
             <YAxis tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`} stroke="#666" width={60}
-              domain={[-1, 1]}
+              domain={[-2, 2]}
               label={{ value: 'Marginal Tax Rate', angle: -90, position: 'left', offset: 0, style: { fill: '#666', fontSize: 12, textAnchor: 'middle' } }}
             />
             <Tooltip formatter={(value: number) => `${(value * 100).toFixed(1)}%`}
