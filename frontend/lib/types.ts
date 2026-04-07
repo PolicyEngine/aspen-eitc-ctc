@@ -26,6 +26,13 @@ export interface HouseholdImpactResponse {
   x_axis_max: number;
 }
 
+export interface PolicyCurveResponse {
+  income_range: number[];
+  current: number[];
+  reform: number[];
+  x_axis_max: number;
+}
+
 export interface IncomeBracket {
   bracket: string;
   beneficiaries: number;

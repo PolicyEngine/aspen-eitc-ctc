@@ -1,9 +1,12 @@
 import type { NextConfig } from "next";
 
+const basePath =
+  process.env.NODE_ENV === "production" ? "/us/aspen-eitc-ctc" : "";
+
 const nextConfig: NextConfig = {
-  basePath: "/us/aspen-eitc-ctc",
+  basePath,
   env: {
-    NEXT_PUBLIC_BASE_PATH: "/us/aspen-eitc-ctc",
+    NEXT_PUBLIC_BASE_PATH: basePath,
   },
 };
 

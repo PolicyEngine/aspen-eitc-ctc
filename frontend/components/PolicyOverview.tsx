@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ResponsiveContainer,
   LineChart,
@@ -12,6 +12,8 @@ import {
   Legend,
   ReferenceLine,
 } from 'recharts';
+import policyOverviewData from '@/lib/data/policyOverviewData.json';
+import type { PolicyCurveResponse } from '@/lib/types';
 
 // Current law EITC parameters (2026 projected)
 const CURRENT_EITC = {
@@ -48,14 +50,6 @@ const REFORM_CTC = {
   zeroEarningsRefundability: 0.50,
 };
 
-function calcEITC(income: number, params: { phaseIn: number; max: number; poStart: number; poRate: number }): number {
-  const phaseInAmount = income * params.phaseIn;
-  const credit = Math.min(phaseInAmount, params.max);
-  if (income <= params.poStart) return credit;
-  const reduction = (income - params.poStart) * params.poRate;
-  return Math.max(0, credit - reduction);
-}
-
 function formatDollar(value: number): string {
   if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
   if (value >= 1_000) return `$${(value / 1_000).toFixed(0)}k`;
@@ -66,64 +60,26 @@ function formatDollarFull(value: number): string {
   return `$${Math.round(value).toLocaleString()}`;
 }
 
+function curveToChartData(curve: PolicyCurveResponse) {
+  return curve.income_range.map((income, i) => ({
+    income,
+    current: curve.current[i],
+    reform: curve.reform[i],
+  }));
+}
+
 export default function PolicyOverview() {
   const [eitcFilingStatus, setEitcFilingStatus] = useState<'single' | 'married'>('single');
   const [eitcChildren, setEitcChildren] = useState<1 | 2 | 3>(1);
-
-  // EITC comparison data
-  const eitcData = useMemo(() => {
-    const points = [];
-    const maxIncome = 70000;
-    const currentParams = CURRENT_EITC[eitcChildren];
-    const reformParams = eitcFilingStatus === 'single'
-      ? REFORM_EITC.single
-      : REFORM_EITC.married;
-    const currentPoStart = eitcFilingStatus === 'single'
-      ? currentParams.poStart
-      : currentParams.poStartJoint;
-
-    for (let inc = 0; inc <= maxIncome; inc += 250) {
-      points.push({
-        income: inc,
-        current: calcEITC(inc, { ...currentParams, poStart: currentPoStart }),
-        reform: calcEITC(inc, reformParams),
-      });
-    }
-    return points;
-  }, [eitcFilingStatus, eitcChildren]);
-
-  // CTC comparison data (single child under 6, single filer)
-  const ctcData = useMemo(() => {
-    const points = [];
-    const maxIncome = 500000;
-    for (let inc = 0; inc <= maxIncome; inc += 1000) {
-      // Current law CTC value (1 child under 17, HOH filer)
-      // Phase-in at 15% from $2,500 threshold, full credit $2,200, phase-out at 5% from $200k
-      const currentCreditAfterPhaseOut = Math.max(0,
-        CURRENT_CTC.amountUnder17 - Math.max(0, inc - CURRENT_CTC.phaseOutSingle) * CURRENT_CTC.phaseOutRate
-      );
-      const currentPhaseIn = Math.max(0, (inc - CURRENT_CTC.refundablePhaseInThreshold) * CURRENT_CTC.refundablePhaseInRate);
-      const currentValue = Math.min(currentCreditAfterPhaseOut, currentPhaseIn);
-
-      // Reform CTC value (1 child under 6, 50% refundable floor, linear phase-out)
-      // 50% minimum at zero earnings ($1,800), 30% phase-in, linear phase-out $75k→$240k
-      const reformPhaseOutRange = 240000 - REFORM_CTC.phaseOutSingle;
-      const reformCreditAfterPhaseOut = Math.max(0,
-        REFORM_CTC.amountUnder6 - Math.max(0, inc - REFORM_CTC.phaseOutSingle) * (REFORM_CTC.amountUnder6 / reformPhaseOutRange)
-      );
-      const reformPhaseIn = Math.min(REFORM_CTC.amountUnder6,
-        REFORM_CTC.amountUnder6 * REFORM_CTC.zeroEarningsRefundability + inc * REFORM_CTC.refundablePhaseInRate
-      );
-      const reformValue = Math.min(reformCreditAfterPhaseOut, reformPhaseIn);
-
-      points.push({
-        income: inc,
-        current: currentValue,
-        reform: reformValue,
-      });
-    }
-    return points;
-  }, []);
+  const eitcCurveKey = `${eitcFilingStatus}_${eitcChildren}` as const;
+  const eitcData = useMemo(
+    () => curveToChartData(policyOverviewData.eitc[eitcCurveKey]),
+    [eitcCurveKey]
+  );
+  const ctcData = useMemo(
+    () => curveToChartData(policyOverviewData.ctc_single_under6),
+    []
+  );
 
   return (
     <div className="space-y-10">
