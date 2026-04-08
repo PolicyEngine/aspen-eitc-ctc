@@ -305,13 +305,17 @@ export default function PolicyOverview() {
               </tr>
             </tbody>
           </table>
+          <p className="text-xs text-gray-500 mt-2">
+            Current-law full phase-out amounts shown here are a one-child illustration; the current-law
+            endpoint varies with the family&apos;s total CTC amount.
+          </p>
         </div>
       </div>
 
       {/* CTC comparison chart */}
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-3">
-          CTC: current law vs. reform (single filer, one child under 6)
+          CTC value: current law vs. reform (single filer, one child under 6)
         </h3>
         <div className="h-80">
           <ResponsiveContainer width="100%" height="100%">

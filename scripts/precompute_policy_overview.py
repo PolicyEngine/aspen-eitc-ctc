@@ -2,7 +2,7 @@
 
 Generates static curves for:
 - EITC by filing status (single/married) and child count (1/2/3)
-- CTC for a single filer with one child under 6
+- CTC value for a single filer with one child under 6
 
 Usage:
     python scripts/precompute_policy_overview.py
@@ -141,9 +141,16 @@ def _compute_curve(
     dependent_ages: list[int],
     axis_max: int,
     axis_step: int,
-    variable_name: str,
+    variable_name: str | None = None,
+    variable_names: list[str] | None = None,
     patch_childless_eitc: bool = False,
 ) -> dict:
+    if (variable_name is None) == (variable_names is None):
+        raise ValueError(
+            "Provide exactly one of variable_name or variable_names."
+        )
+
+    output_variable = variable_name or variable_names[0]
     axis_count = axis_max // axis_step + 1
     situation = _build_situation(
         age_head=age_head,
@@ -151,15 +158,33 @@ def _compute_curve(
         dependent_ages=dependent_ages,
         axis_max=axis_max,
         axis_count=axis_count,
-        variable_name=variable_name,
+        variable_name=output_variable,
     )
 
     baseline = Simulation(situation=situation)
     reform = Simulation(situation=situation, reform=create_aspen_reform())
 
     income_range = _extract_axis_values(baseline, "employment_income", situation)
-    current = _extract_axis_values(baseline, variable_name, situation)
-    reform_values = _extract_axis_values(reform, variable_name, situation)
+    if variable_name is not None:
+        current = _extract_axis_values(baseline, variable_name, situation)
+        reform_values = _extract_axis_values(reform, variable_name, situation)
+    else:
+        current_parts = [
+            _extract_axis_values(baseline, name, situation)
+            for name in variable_names
+        ]
+        reform_parts = [
+            _extract_axis_values(reform, name, situation)
+            for name in variable_names
+        ]
+        current = [
+            sum(part[i] for part in current_parts)
+            for i in range(len(current_parts[0]))
+        ]
+        reform_values = [
+            sum(part[i] for part in reform_parts)
+            for i in range(len(reform_parts[0]))
+        ]
 
     if patch_childless_eitc:
         child_count = _extract_axis_values(
@@ -169,6 +194,56 @@ def _compute_curve(
             reform_value if child_count[i] > 0 else current[i]
             for i, reform_value in enumerate(reform_values)
         ]
+
+    return {
+        "income_range": _round_list(income_range, 0),
+        "current": _round_list(current),
+        "reform": _round_list(reform_values),
+        "x_axis_max": axis_max,
+    }
+
+
+def _compute_curve_with_custom_value_definitions(
+    *,
+    age_head: int,
+    age_spouse: int | None,
+    dependent_ages: list[int],
+    axis_max: int,
+    axis_step: int,
+    current_variable_names: list[str],
+    reform_variable_names: list[str],
+) -> dict:
+    axis_count = axis_max // axis_step + 1
+    situation = _build_situation(
+        age_head=age_head,
+        age_spouse=age_spouse,
+        dependent_ages=dependent_ages,
+        axis_max=axis_max,
+        axis_count=axis_count,
+        variable_name=current_variable_names[0],
+    )
+
+    baseline = Simulation(situation=situation)
+    reform = Simulation(situation=situation, reform=create_aspen_reform())
+
+    income_range = _extract_axis_values(baseline, "employment_income", situation)
+    current_parts = [
+        _extract_axis_values(baseline, name, situation)
+        for name in current_variable_names
+    ]
+    reform_parts = [
+        _extract_axis_values(reform, name, situation)
+        for name in reform_variable_names
+    ]
+
+    current = [
+        sum(part[i] for part in current_parts)
+        for i in range(len(current_parts[0]))
+    ]
+    reform_values = [
+        sum(part[i] for part in reform_parts)
+        for i in range(len(reform_parts[0]))
+    ]
 
     return {
         "income_range": _round_list(income_range, 0),
@@ -193,13 +268,14 @@ def main() -> None:
                 patch_childless_eitc=True,
             )
 
-    ctc = _compute_curve(
+    ctc = _compute_curve_with_custom_value_definitions(
         age_head=30,
         age_spouse=None,
         dependent_ages=[3],
         axis_max=CTC_MAX,
         axis_step=CTC_STEP,
-        variable_name="ctc",
+        current_variable_names=["ctc_value"],
+        reform_variable_names=["refundable_ctc", "non_refundable_ctc"],
     )
 
     output = {
