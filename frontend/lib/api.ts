@@ -5,6 +5,8 @@ import {
 import { buildHouseholdSituation } from "./household";
 
 const PE_API_URL = "https://api.policyengine.org";
+const HOUSEHOLD_API_URL =
+  process.env.NEXT_PUBLIC_HOUSEHOLD_API_URL || "";
 
 class ApiError extends Error {
   status: number;
@@ -211,6 +213,31 @@ export const api = {
   async calculateHouseholdImpact(
     request: HouseholdRequest
   ): Promise<HouseholdImpactResponse> {
+    if (HOUSEHOLD_API_URL) {
+      const response = await fetchWithTimeout(
+        `${HOUSEHOLD_API_URL.replace(/\/$/, "")}/household-impact`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(request),
+        }
+      );
+      if (!response.ok) {
+        let errorBody;
+        try {
+          errorBody = await response.json();
+        } catch {
+          errorBody = await response.text();
+        }
+        throw new ApiError(
+          `Household API error: ${response.status}`,
+          response.status,
+          errorBody
+        );
+      }
+      return response.json();
+    }
+
     const household = buildHouseholdSituation(request);
     const policy = buildReform();
     const yearStr = String(request.year);
