@@ -4,7 +4,8 @@ import Providers from "./providers";
 import Header from "@/components/Header";
 import "./globals.css";
 
-const GA_ID = "G-2YHG89FY0N";
+const GA_ID = "G-91M4529HE7";
+const TOOL_NAME = "aspen-eitc-ctc";
 
 export const metadata: Metadata = {
   title: "EITC & CTC Reform Calculator | PolicyEngine",
@@ -29,7 +30,7 @@ export default function RootLayout({
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
-            gtag('config', '${GA_ID}');
+            gtag('config', '${GA_ID}', { tool_name: '${TOOL_NAME}' });
           `}
         </Script>
       </head>
