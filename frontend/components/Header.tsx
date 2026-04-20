@@ -542,9 +542,9 @@ export default function Header() {
             href={`https://policyengine.org/${COUNTRY_ID}`}
             style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', marginRight: spacing.md }}
           >
-            <img src={PE_LOGO_URL} alt="PolicyEngine" style={{ height: '24px', width: 'auto' }} />
+            <img src={PE_LOGO_URL} alt="PolicyEngine - Open-source tax and benefit policy simulator" width={120} height={24} style={{ height: '24px', width: 'auto' }} />
           </a>
-          <nav style={{ alignItems: 'center', gap: '24px' }} className="hidden lg:flex">
+          <nav aria-label="Main navigation" style={{ alignItems: 'center', gap: '24px' }} className="hidden lg:flex">
             {NAV_ITEMS.map((item) => (
               <NavItem key={item.label} setup={item} />
             ))}

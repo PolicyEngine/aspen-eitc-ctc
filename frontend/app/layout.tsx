@@ -1,16 +1,124 @@
 import Script from "next/script";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import Providers from "./providers";
 import Header from "@/components/Header";
 import "./globals.css";
 
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter",
+  weight: ["300", "400", "500", "600", "700", "800"],
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-jetbrains-mono",
+});
+
 const GA_ID = "G-2YHG89FY0N";
 const TOOL_NAME = "aspen-eitc-ctc";
+
+const SITE_URL = "https://policyengine.org/us/aspen-eitc-ctc";
+const OG_IMAGE = "https://policyengine.org/us/aspen-eitc-ctc/policyengine-logo.png";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#2C7A7B",
+};
 
 export const metadata: Metadata = {
   title: "EITC & CTC Reform Calculator | PolicyEngine",
   description:
-    "Calculate your personal and national impact under the Aspen ESG proposal to reform and enhance the EITC and CTC",
+    "Calculate your personal and national impact under the Aspen Economic Strategy Group proposal to reform and enhance the Earned Income Tax Credit (EITC) and Child Tax Credit (CTC). Compare current law vs. reform for households across all 50 states.",
+  keywords: [
+    "EITC",
+    "CTC",
+    "Earned Income Tax Credit",
+    "Child Tax Credit",
+    "tax reform",
+    "Aspen ESG",
+    "PolicyEngine",
+    "tax calculator",
+    "tax credit calculator",
+    "family tax benefits",
+  ],
+  metadataBase: new URL(SITE_URL),
+  alternates: {
+    canonical: SITE_URL,
+  },
+  openGraph: {
+    type: "website",
+    url: SITE_URL,
+    title: "EITC & CTC Reform Calculator | PolicyEngine",
+    description:
+      "Estimate your household and national impact under the Aspen ESG proposal to reform and enhance the EITC and CTC.",
+    siteName: "PolicyEngine",
+    images: [
+      {
+        url: OG_IMAGE,
+        width: 1200,
+        height: 630,
+        alt: "PolicyEngine EITC & CTC Reform Calculator",
+      },
+    ],
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "EITC & CTC Reform Calculator | PolicyEngine",
+    description:
+      "Estimate your household and national impact under the Aspen ESG proposal to reform and enhance the EITC and CTC.",
+    images: [OG_IMAGE],
+    creator: "@ThePolicyEngine",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  icons: {
+    icon: "/policyengine-logo.png",
+  },
+};
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: "EITC & CTC Reform Calculator",
+  url: SITE_URL,
+  description:
+    "Calculate your personal and national impact under the Aspen ESG proposal to reform and enhance the EITC and CTC.",
+  applicationCategory: "FinanceApplication",
+  operatingSystem: "All",
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "USD",
+  },
+  author: {
+    "@type": "Organization",
+    name: "PolicyEngine",
+    url: "https://policyengine.org",
+  },
+  publisher: {
+    "@type": "Organization",
+    name: "PolicyEngine",
+    url: "https://policyengine.org",
+    logo: {
+      "@type": "ImageObject",
+      url: "https://policyengine.org/us/aspen-eitc-ctc/policyengine-logo.png",
+    },
+  },
 };
 
 export default function RootLayout({
@@ -19,8 +127,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
       <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
         <Script
           src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
           strategy="afterInteractive"
@@ -80,7 +192,9 @@ export default function RootLayout({
       </head>
       <body>
         <Header />
-        <Providers>{children}</Providers>
+        <main>
+          <Providers>{children}</Providers>
+        </main>
       </body>
     </html>
   );
