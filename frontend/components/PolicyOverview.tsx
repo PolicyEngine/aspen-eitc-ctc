@@ -76,9 +76,14 @@ export default function PolicyOverview() {
     () => curveToChartData(policyOverviewData.eitc[eitcCurveKey]),
     [eitcCurveKey]
   );
+  const [ctcFilingStatus, setCtcFilingStatus] = useState<'single' | 'married'>('single');
+  const [ctcAgeGroup, setCtcAgeGroup] = useState<'under6' | '6to17'>('under6');
+  const ctcCurveKey = `${ctcFilingStatus}_${ctcAgeGroup}` as const;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const ctcSource = ((policyOverviewData as any).ctc ?? { single_under6: policyOverviewData.ctc_single_under6 }) as Record<string, PolicyCurveResponse>;
   const ctcData = useMemo(
-    () => curveToChartData(policyOverviewData.ctc_single_under6),
-    []
+    () => curveToChartData(ctcSource[ctcCurveKey] ?? policyOverviewData.ctc_single_under6),
+    [ctcCurveKey, ctcSource]
   );
 
   return (
@@ -315,8 +320,40 @@ export default function PolicyOverview() {
       {/* CTC comparison chart */}
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-3">
-          CTC value: current law vs. reform (single filer, one child under 6)
+          CTC value: current law vs. reform
         </h3>
+        <div className="flex flex-wrap gap-2 mb-3">
+          <div className="flex gap-1">
+            {(['single', 'married'] as const).map((fs) => (
+              <button
+                key={fs}
+                onClick={() => setCtcFilingStatus(fs)}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                  ctcFilingStatus === fs
+                    ? 'bg-primary-500 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {fs === 'single' ? 'Single' : 'Married filing jointly'}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-1">
+            {(['under6', '6to17'] as const).map((ag) => (
+              <button
+                key={ag}
+                onClick={() => setCtcAgeGroup(ag)}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                  ctcAgeGroup === ag
+                    ? 'bg-primary-500 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {ag === 'under6' ? 'Child under 6' : 'Child 6-17'}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="h-80">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={ctcData} margin={{ top: 10, right: 30, left: 20, bottom: 5 }}>

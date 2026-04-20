@@ -175,12 +175,12 @@ export default function AggregateImpact({ triggered }: Props) {
       {/* Year selector */}
       <div>
         <p className="text-sm text-gray-500 mb-2">Select year</p>
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex gap-1.5 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
           {YEARS.map((year) => (
             <button
               key={year}
               onClick={() => setSelectedYear(year)}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap shrink-0 ${
                 selectedYear === year
                   ? 'bg-primary-500 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -193,12 +193,12 @@ export default function AggregateImpact({ triggered }: Props) {
       </div>
 
       {/* Sub-navigation */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex gap-2 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
         {sections.map((s) => (
           <button
             key={s.key}
             onClick={() => setActiveSection(s.key)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap shrink-0 ${
               activeSection === s.key
                 ? 'bg-primary-500 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
