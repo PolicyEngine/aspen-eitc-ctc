@@ -1,261 +1,574 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { IconMenu2, IconChevronDown, IconWorld, IconX } from '@tabler/icons-react';
+import { useEffect, useRef, useState } from 'react';
+import {
+  IconChevronDown,
+  IconMenu2,
+  IconWorld,
+  IconX,
+} from '@tabler/icons-react';
+import {
+  colors,
+  spacing,
+  typography,
+} from '@policyengine/design-system';
 
-const NAV_ITEMS = [
-  { label: 'Research', href: 'https://policyengine.org/us/research' },
-  { label: 'Model', href: 'https://policyengine.org/us/model' },
-  {
-    label: 'About',
-    hasDropdown: true,
-    items: [
-      { label: 'Team', href: 'https://policyengine.org/us/team' },
-      { label: 'Supporters', href: 'https://policyengine.org/us/supporters' },
-    ],
-  },
-  { label: 'Donate', href: 'https://policyengine.org/us/donate' },
-];
+const PE_LOGO_URL =
+  'https://raw.githubusercontent.com/PolicyEngine/policyengine-app-v2/main/app/public/assets/logos/policyengine/white.svg';
+
+const COUNTRY_ID = 'us';
+
+interface DropdownItem {
+  label: string;
+  href: string;
+}
+
+interface NavItemSetup {
+  label: string;
+  href?: string;
+  hasDropdown: boolean;
+  dropdownItems?: DropdownItem[];
+}
 
 const COUNTRIES = [
   { id: 'us', label: 'United States' },
   { id: 'uk', label: 'United Kingdom' },
 ];
 
-const PE_LOGO_URL =
-  'https://raw.githubusercontent.com/PolicyEngine/policyengine-app-v2/main/app/public/assets/logos/policyengine/white.svg';
+const NAV_ITEMS: NavItemSetup[] = [
+  { label: 'Research', href: `https://policyengine.org/${COUNTRY_ID}/research`, hasDropdown: false },
+  { label: 'Model', href: `https://policyengine.org/${COUNTRY_ID}/model`, hasDropdown: false },
+  { label: 'API', href: `https://policyengine.org/${COUNTRY_ID}/api`, hasDropdown: false },
+  {
+    label: 'About',
+    hasDropdown: true,
+    dropdownItems: [
+      { label: 'Team', href: `https://policyengine.org/${COUNTRY_ID}/team` },
+      { label: 'Supporters', href: `https://policyengine.org/${COUNTRY_ID}/supporters` },
+      { label: 'Citations', href: `https://policyengine.org/${COUNTRY_ID}/citations` },
+    ],
+  },
+  { label: 'Donate', href: `https://policyengine.org/${COUNTRY_ID}/donate`, hasDropdown: false },
+];
 
-const linkStyle: React.CSSProperties = {
-  color: '#fff',
-  fontWeight: 500,
-  fontSize: '18px',
+const navItemStyle: React.CSSProperties = {
+  color: colors.text.inverse,
+  fontWeight: typography.fontWeight.medium,
+  fontSize: '15px',
+  fontFamily: typography.fontFamily.primary,
   textDecoration: 'none',
-  fontFamily: "'Inter', sans-serif",
+  padding: '6px 14px',
+  borderRadius: '6px',
+  transition: 'background-color 0.15s ease',
+  letterSpacing: '0.01em',
 };
 
-export default function Header() {
-  const [aboutOpen, setAboutOpen] = useState(false);
-  const [countryOpen, setCountryOpen] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const aboutRef = useRef<HTMLDivElement>(null);
-  const countryRef = useRef<HTMLDivElement>(null);
+const hoverHandlers = {
+  onMouseEnter: (e: React.MouseEvent<HTMLElement>) => {
+    e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.12)';
+  },
+  onMouseLeave: (e: React.MouseEvent<HTMLElement>) => {
+    e.currentTarget.style.backgroundColor = 'transparent';
+  },
+};
+
+/* ---------- DropdownPanel ---------- */
+
+function DropdownPanel({
+  items,
+  open,
+  onClose,
+}: {
+  items: DropdownItem[];
+  open: boolean;
+  onClose: () => void;
+}) {
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [contentHeight, setContentHeight] = useState(0);
+  const [visible, setVisible] = useState(false);
 
   useEffect(() => {
+    if (open && contentRef.current) {
+      setContentHeight(contentRef.current.scrollHeight);
+      requestAnimationFrame(() => setVisible(true));
+    } else {
+      setVisible(false);
+      const timer = setTimeout(() => setContentHeight(0), 250);
+      return () => clearTimeout(timer);
+    }
+  }, [open]);
+
+  if (!open && contentHeight === 0) return null;
+
+  return (
+    <>
+      <div
+        onClick={onClose}
+        style={{ position: 'fixed', inset: 0, zIndex: 999, cursor: 'default' }}
+      />
+      <div
+        style={{
+          position: 'absolute',
+          top: '100%',
+          left: '50%',
+          transform: visible
+            ? 'translateX(-50%) translateY(0)'
+            : 'translateX(-50%) translateY(-8px)',
+          marginTop: '10px',
+          minWidth: '220px',
+          overflow: 'hidden',
+          maxHeight: visible ? `${contentHeight}px` : '0px',
+          opacity: visible ? 1 : 0,
+          transition:
+            'max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          borderRadius: '14px',
+          background:
+            'linear-gradient(135deg, rgba(255,255,255,0.97), rgba(240,249,255,0.95))',
+          backdropFilter: 'blur(24px) saturate(200%)',
+          WebkitBackdropFilter: 'blur(24px) saturate(200%)',
+          boxShadow:
+            '0 20px 60px rgba(0, 0, 0, 0.15), 0 4px 16px rgba(0, 0, 0, 0.06), inset 0 0 0 1px rgba(255, 255, 255, 0.6)',
+          zIndex: 1001,
+        }}
+      >
+        <div ref={contentRef} style={{ padding: '8px' }}>
+          {items.map((item, i) => (
+            <a
+              key={item.label}
+              href={item.href}
+              onClick={onClose}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                width: '100%',
+                textAlign: 'left',
+                padding: '11px 16px',
+                borderRadius: '10px',
+                textDecoration: 'none',
+                fontSize: '14px',
+                fontFamily: typography.fontFamily.primary,
+                fontWeight: typography.fontWeight.semibold,
+                color: colors.primary[800],
+                transition:
+                  'background-color 0.12s ease, color 0.12s ease, opacity 0.3s ease',
+                transitionDelay: visible ? `${i * 50}ms` : '0ms',
+                opacity: visible ? 1 : 0,
+                lineHeight: '1.3',
+                letterSpacing: '-0.01em',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = colors.primary[500];
+                e.currentTarget.style.color = colors.text.inverse;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.color = colors.primary[800];
+              }}
+            >
+              {item.label}
+            </a>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ---------- NavItem ---------- */
+
+function NavItem({ setup }: { setup: NavItemSetup }) {
+  const { label, href, hasDropdown, dropdownItems } = setup;
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!dropdownOpen) return;
     function handleClick(e: MouseEvent) {
-      if (aboutRef.current && !aboutRef.current.contains(e.target as Node)) setAboutOpen(false);
-      if (countryRef.current && !countryRef.current.contains(e.target as Node)) setCountryOpen(false);
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setDropdownOpen(false);
     }
     document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [dropdownOpen]);
+
+  if (hasDropdown && dropdownItems) {
+    return (
+      <div ref={containerRef} style={{ position: 'relative' }}>
+        <button
+          type="button"
+          onClick={() => setDropdownOpen((prev) => !prev)}
+          style={{
+            ...navItemStyle,
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+          }}
+          {...hoverHandlers}
+        >
+          <span>{label}</span>
+          <IconChevronDown
+            size={15}
+            color={colors.text.inverse}
+            style={{
+              opacity: 0.7,
+              transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+              transform: dropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+            }}
+          />
+        </button>
+        <DropdownPanel
+          items={dropdownItems}
+          open={dropdownOpen}
+          onClose={() => setDropdownOpen(false)}
+        />
+      </div>
+    );
+  }
+
+  if (href) {
+    return (
+      <a href={href} style={navItemStyle} {...hoverHandlers}>
+        {label}
+      </a>
+    );
+  }
+
+  return null;
+}
+
+/* ---------- CountrySelector ---------- */
+
+function CountrySelector() {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [contentHeight, setContentHeight] = useState(0);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (open && contentRef.current) {
+      setContentHeight(contentRef.current.scrollHeight);
+      requestAnimationFrame(() => setVisible(true));
+    } else {
+      setVisible(false);
+      const timer = setTimeout(() => setContentHeight(0), 250);
+      return () => clearTimeout(timer);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={containerRef} style={{ position: 'relative' }}>
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        aria-label="Country selector"
+        style={{
+          background: 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          padding: '6px',
+          borderRadius: '6px',
+          transition: 'background-color 0.15s ease',
+          lineHeight: 1,
+          display: 'flex',
+          alignItems: 'center',
+        }}
+        {...hoverHandlers}
+      >
+        <IconWorld size={18} color={colors.text.inverse} />
+      </button>
+
+      {(open || contentHeight > 0) && (
+        <>
+          <div
+            onClick={() => setOpen(false)}
+            style={{ position: 'fixed', inset: 0, zIndex: 999, cursor: 'default' }}
+          />
+          <div
+            style={{
+              position: 'absolute',
+              top: '100%',
+              right: 0,
+              transform: visible ? 'translateY(0)' : 'translateY(-8px)',
+              marginTop: '10px',
+              minWidth: '220px',
+              overflow: 'hidden',
+              maxHeight: visible ? `${contentHeight}px` : '0px',
+              opacity: visible ? 1 : 0,
+              transition:
+                'max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              borderRadius: '14px',
+              background:
+                'linear-gradient(135deg, rgba(255,255,255,0.97), rgba(240,249,255,0.95))',
+              backdropFilter: 'blur(24px) saturate(200%)',
+              WebkitBackdropFilter: 'blur(24px) saturate(200%)',
+              boxShadow:
+                '0 20px 60px rgba(0, 0, 0, 0.15), 0 4px 16px rgba(0, 0, 0, 0.06), inset 0 0 0 1px rgba(255, 255, 255, 0.6)',
+              zIndex: 1001,
+            }}
+          >
+            <div ref={contentRef} style={{ padding: '8px' }}>
+              {COUNTRIES.map((country, i) => (
+                <a
+                  key={country.id}
+                  href={`https://policyengine.org/${country.id}`}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    width: '100%',
+                    textAlign: 'left',
+                    padding: '11px 16px',
+                    borderRadius: '10px',
+                    textDecoration: 'none',
+                    fontSize: '14px',
+                    fontFamily: typography.fontFamily.primary,
+                    fontWeight:
+                      COUNTRY_ID === country.id
+                        ? typography.fontWeight.bold
+                        : typography.fontWeight.semibold,
+                    color: colors.primary[800],
+                    transition:
+                      'background-color 0.12s ease, color 0.12s ease, opacity 0.3s ease',
+                    transitionDelay: visible ? `${i * 50}ms` : '0ms',
+                    opacity: visible ? 1 : 0,
+                    lineHeight: '1.3',
+                    letterSpacing: '-0.01em',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = colors.primary[500];
+                    e.currentTarget.style.color = colors.text.inverse;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.color = colors.primary[800];
+                  }}
+                >
+                  {country.label}
+                  {COUNTRY_ID === country.id && (
+                    <span style={{ marginLeft: 'auto', fontSize: '12px', opacity: 0.6 }}>
+                      &#10003;
+                    </span>
+                  )}
+                </a>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ---------- MobileMenu ---------- */
+
+function MobileMenu({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 2000,
+        display: 'flex',
+        justifyContent: 'flex-end',
+        pointerEvents: open ? 'auto' : 'none',
+      }}
+    >
+      <div
+        onClick={onClose}
+        style={{
+          position: 'absolute',
+          inset: 0,
+          backgroundColor: 'rgba(0,0,0,0.4)',
+          opacity: open ? 1 : 0,
+          transition: 'opacity 0.3s ease',
+        }}
+      />
+      <div
+        style={{
+          position: 'relative',
+          width: 'min(300px, calc(100vw - 24px))',
+          maxWidth: '100vw',
+          boxSizing: 'border-box',
+          height: '100%',
+          backgroundColor: colors.primary[600],
+          padding: spacing.lg,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: spacing.lg,
+          transform: open ? 'translateX(0)' : 'translateX(100%)',
+          transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span
+            style={{
+              color: colors.text.inverse,
+              fontWeight: typography.fontWeight.semibold,
+              fontSize: typography.fontSize.lg,
+              fontFamily: typography.fontFamily.primary,
+            }}
+          >
+            Menu
+          </span>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close menu"
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px' }}
+          >
+            <IconX size={20} color={colors.text.inverse} />
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.lg }}>
+          {NAV_ITEMS.map((item) =>
+            item.hasDropdown && item.dropdownItems ? (
+              <div key={item.label}>
+                <span
+                  style={{
+                    color: colors.text.inverse,
+                    fontWeight: typography.fontWeight.medium,
+                    fontSize: typography.fontSize.sm,
+                    marginBottom: spacing.xs,
+                    display: 'block',
+                    fontFamily: typography.fontFamily.primary,
+                  }}
+                >
+                  {item.label}
+                </span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.xs, paddingLeft: spacing.md }}>
+                  {item.dropdownItems.map((sub) => (
+                    <a
+                      key={sub.label}
+                      href={sub.href}
+                      onClick={onClose}
+                      style={{
+                        color: colors.text.inverse,
+                        textDecoration: 'none',
+                        fontWeight: typography.fontWeight.normal,
+                        fontSize: typography.fontSize.sm,
+                        fontFamily: typography.fontFamily.primary,
+                      }}
+                    >
+                      {sub.label}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <a
+                key={item.label}
+                href={item.href}
+                onClick={onClose}
+                style={{
+                  color: colors.text.inverse,
+                  textDecoration: 'none',
+                  fontWeight: typography.fontWeight.medium,
+                  fontSize: typography.fontSize.sm,
+                  fontFamily: typography.fontFamily.primary,
+                  display: 'block',
+                }}
+              >
+                {item.label}
+              </a>
+            ),
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Header ---------- */
+
+export default function Header() {
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
     <header
       style={{
         position: 'sticky',
         top: 0,
-        padding: '8px 24px',
-        height: '58px',
-        backgroundColor: '#2C7A7B',
-        borderBottom: '0.5px solid #94A3B8',
-        boxShadow: '0px 2px 4px -1px rgba(16,24,40,0.05), 0px 4px 6px -1px rgba(16,24,40,0.1)',
+        paddingBlock: spacing.sm,
+        paddingInline: 'clamp(16px, 4vw, 32px)',
+        height: spacing.layout.header,
+        background: `linear-gradient(to right, ${colors.primary[800]}, ${colors.primary[600]})`,
+        borderBottom: `0.5px solid ${colors.primary[700]}`,
+        boxShadow: `0px 2px 4px -1px ${colors.shadow.light}, 0px 4px 6px -1px ${colors.shadow.medium}`,
         zIndex: 1000,
-        fontFamily: "'Inter', sans-serif",
+        fontFamily: typography.fontFamily.primary,
         width: '100%',
         boxSizing: 'border-box' as const,
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '100%' }}>
         <div style={{ display: 'flex', alignItems: 'center' }}>
-          <a href="https://policyengine.org/us" style={{ display: 'flex', alignItems: 'center', marginRight: '12px' }}>
+          <a
+            href={`https://policyengine.org/${COUNTRY_ID}`}
+            style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', marginRight: spacing.md }}
+          >
             <img src={PE_LOGO_URL} alt="PolicyEngine" style={{ height: '24px', width: 'auto' }} />
           </a>
-          <nav style={{ display: 'flex', alignItems: 'center', gap: '24px' }} className="hidden lg:flex">
-            {NAV_ITEMS.map((item) =>
-              item.hasDropdown ? (
-                <div key={item.label} ref={aboutRef} style={{ position: 'relative' }}>
-                  <button
-                    onClick={() => setAboutOpen(!aboutOpen)}
-                    style={{
-                      ...linkStyle,
-                      background: 'transparent',
-                      border: 'none',
-                      cursor: 'pointer',
-                      padding: 0,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                    }}
-                  >
-                    {item.label}
-                    <IconChevronDown size={18} color="white" />
-                  </button>
-                  {aboutOpen && (
-                    <div style={{
-                      position: 'absolute',
-                      top: '100%',
-                      left: 0,
-                      marginTop: '4px',
-                      width: '200px',
-                      background: '#fff',
-                      borderRadius: '8px',
-                      boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
-                      border: '1px solid #E2E8F0',
-                      padding: '4px 0',
-                      zIndex: 1001,
-                    }}>
-                      {item.items!.map((sub) => (
-                        <a
-                          key={sub.label}
-                          href={sub.href}
-                          style={{
-                            display: 'block',
-                            padding: '8px 16px',
-                            fontSize: '14px',
-                            color: '#101828',
-                            textDecoration: 'none',
-                            fontFamily: "'Inter', sans-serif",
-                          }}
-                        >
-                          {sub.label}
-                        </a>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <a key={item.label} href={item.href} style={linkStyle}>
-                  {item.label}
-                </a>
-              ),
-            )}
+          <nav style={{ alignItems: 'center', gap: '24px' }} className="hidden lg:flex">
+            {NAV_ITEMS.map((item) => (
+              <NavItem key={item.label} setup={item} />
+            ))}
           </nav>
         </div>
 
-        <div className="hidden lg:flex" style={{ display: 'flex', alignItems: 'center' }}>
-          <div ref={countryRef} style={{ position: 'relative' }}>
-            <button
-              onClick={() => setCountryOpen(!countryOpen)}
-              style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}
-              aria-label="Country selector"
-            >
-              <IconWorld size={18} color="white" />
-            </button>
-            {countryOpen && (
-              <div style={{
-                position: 'absolute',
-                top: '100%',
-                right: 0,
-                marginTop: '4px',
-                width: '200px',
-                background: '#fff',
-                borderRadius: '8px',
-                boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
-                border: '1px solid #E2E8F0',
-                padding: '4px 0',
-                zIndex: 1001,
-              }}>
-                {COUNTRIES.map((c) => (
-                  <a
-                    key={c.id}
-                    href={`https://policyengine.org/${c.id}`}
-                    style={{
-                      display: 'block',
-                      padding: '8px 16px',
-                      fontSize: '14px',
-                      color: '#101828',
-                      textDecoration: 'none',
-                      fontFamily: "'Inter', sans-serif",
-                      fontWeight: c.id === 'us' ? 700 : 400,
-                    }}
-                  >
-                    {c.label}
-                  </a>
-                ))}
-              </div>
-            )}
-          </div>
+        <div className="hidden lg:flex" style={{ alignItems: 'center' }}>
+          <CountrySelector />
         </div>
 
-        <div className="flex lg:hidden" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div ref={countryRef} style={{ position: 'relative' }}>
-            <button
-              onClick={() => setCountryOpen(!countryOpen)}
-              style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}
-              aria-label="Country selector"
-            >
-              <IconWorld size={18} color="white" />
-            </button>
-          </div>
+        <div className="flex lg:hidden" style={{ alignItems: 'center', gap: spacing.md }}>
+          <CountrySelector />
           <button
-            onClick={() => setMobileOpen(!mobileOpen)}
-            style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px' }}
+            type="button"
+            onClick={() => setMobileOpen(true)}
             aria-label="Toggle navigation"
+            style={{ padding: '4px', borderRadius: '4px', background: 'transparent', border: 'none', cursor: 'pointer' }}
           >
-            <IconMenu2 size={24} color="white" />
+            <IconMenu2 size={24} color={colors.text.inverse} />
           </button>
         </div>
       </div>
 
-      {mobileOpen && (
-        <>
-          <div
-            style={{
-              position: 'fixed',
-              inset: 0,
-              backgroundColor: 'rgba(0,0,0,0.4)',
-              zIndex: 1001,
-            }}
-            onClick={() => setMobileOpen(false)}
-          />
-          <div
-            style={{
-              position: 'fixed',
-              top: 0,
-              right: 0,
-              width: '300px',
-              height: '100vh',
-              backgroundColor: '#2C7A7B',
-              zIndex: 1002,
-              padding: '16px 24px',
-              fontFamily: "'Inter', sans-serif",
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <span style={{ color: '#fff', fontWeight: 700, fontSize: '16px' }}>Menu</span>
-              <button
-                onClick={() => setMobileOpen(false)}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
-                aria-label="Close menu"
-              >
-                <IconX size={24} color="white" />
-              </button>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {NAV_ITEMS.map((item) =>
-                item.hasDropdown ? (
-                  <div key={item.label}>
-                    <span style={{ color: '#fff', fontWeight: 500, fontSize: '14px', display: 'block', marginBottom: '4px' }}>
-                      {item.label}
-                    </span>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingLeft: '12px' }}>
-                      {item.items!.map((sub) => (
-                        <a key={sub.label} href={sub.href} style={{ color: '#fff', textDecoration: 'none', fontSize: '14px' }}>
-                          {sub.label}
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <a key={item.label} href={item.href} style={{ color: '#fff', textDecoration: 'none', fontWeight: 500, fontSize: '14px', display: 'block' }}>
-                    {item.label}
-                  </a>
-                ),
-              )}
-            </div>
-          </div>
-        </>
-      )}
+      <MobileMenu open={mobileOpen} onClose={() => setMobileOpen(false)} />
     </header>
   );
 }
