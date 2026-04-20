@@ -34,23 +34,25 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero */}
-      <div className="bg-primary-500 text-white py-8 px-4 shadow-md">
+      <section aria-label="Page introduction" className="bg-primary-500 text-white py-8 px-4 shadow-md">
         <div className="max-w-5xl mx-auto">
           <h1 className="text-4xl font-bold mb-2">
             EITC &amp; CTC Reform Calculator
           </h1>
           <p className="text-lg opacity-90">
-            Estimate the impact of the Aspen ESG proposal to reform and enhance the EITC and CTC
+            Estimate the impact of the Aspen ESG proposal to reform and enhance the Earned Income Tax Credit and Child Tax Credit
           </p>
         </div>
-      </div>
+      </section>
 
       <div className="max-w-5xl mx-auto px-4 py-8">
         {/* Tabs */}
-        <div className="flex space-x-1 mb-4 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
+        <nav aria-label="Calculator sections" className="flex space-x-1 mb-4 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide" role="tablist">
           {(['policy', 'impact', 'aggregate'] as const).map((tab) => (
             <button
               key={tab}
+              role="tab"
+              aria-selected={activeTab === tab}
               onClick={() => setActiveTab(tab)}
               className={`px-6 py-3 rounded-t-lg font-semibold transition-colors whitespace-nowrap shrink-0 ${
                 activeTab === tab
@@ -65,10 +67,10 @@ export default function Home() {
                 : 'National impact'}
             </button>
           ))}
-        </div>
+        </nav>
 
         {/* Tab Content */}
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="bg-white rounded-lg shadow-md p-6" role="tabpanel">
           {activeTab === 'policy' ? (
             <PolicyOverview />
           ) : activeTab === 'impact' ? (

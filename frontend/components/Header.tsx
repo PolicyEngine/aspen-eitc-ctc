@@ -68,9 +68,9 @@ export default function Header() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '100%' }}>
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <a href="https://policyengine.org/us" style={{ display: 'flex', alignItems: 'center', marginRight: '12px' }}>
-            <img src={PE_LOGO_URL} alt="PolicyEngine" style={{ height: '24px', width: 'auto' }} />
+            <img src={PE_LOGO_URL} alt="PolicyEngine - Open-source tax and benefit policy simulator" width={120} height={24} style={{ height: '24px', width: 'auto' }} />
           </a>
-          <nav style={{ display: 'flex', alignItems: 'center', gap: '24px' }} className="hidden lg:flex">
+          <nav aria-label="Main navigation" style={{ display: 'flex', alignItems: 'center', gap: '24px' }} className="hidden lg:flex">
             {NAV_ITEMS.map((item) =>
               item.hasDropdown ? (
                 <div key={item.label} ref={aboutRef} style={{ position: 'relative' }}>
