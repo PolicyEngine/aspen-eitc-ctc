@@ -2,7 +2,7 @@
 
 Generates static curves for:
 - EITC by filing status (single/married) and child count (1/2/3)
-- CTC value for a single filer with one child under 6
+- CTC value by filing status (single/married) and child age (under6/6to17)
 
 Usage:
     python scripts/precompute_policy_overview.py
@@ -268,19 +268,26 @@ def main() -> None:
                 patch_childless_eitc=True,
             )
 
-    ctc = _compute_curve_with_custom_value_definitions(
-        age_head=30,
-        age_spouse=None,
-        dependent_ages=[3],
-        axis_max=CTC_MAX,
-        axis_step=CTC_STEP,
-        current_variable_names=["ctc_value"],
-        reform_variable_names=["refundable_ctc", "non_refundable_ctc"],
-    )
+    ctc = {}
+    for filing_status, spouse_age in (("single", None), ("married", 30)):
+        for age_label, dep_age in (("under6", 3), ("6to17", 10)):
+            key = f"{filing_status}_{age_label}"
+            print(f"  CTC: {key}...")
+            ctc[key] = _compute_curve_with_custom_value_definitions(
+                age_head=30,
+                age_spouse=spouse_age,
+                dependent_ages=[dep_age],
+                axis_max=CTC_MAX,
+                axis_step=CTC_STEP,
+                current_variable_names=["ctc_value"],
+                reform_variable_names=["refundable_ctc", "non_refundable_ctc"],
+            )
 
     output = {
         "eitc": eitc,
-        "ctc_single_under6": ctc,
+        "ctc": ctc,
+        # Keep legacy key for backward compatibility during deploy
+        "ctc_single_under6": ctc["single_under6"],
     }
 
     os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)

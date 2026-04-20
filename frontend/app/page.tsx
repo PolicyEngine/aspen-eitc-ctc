@@ -47,12 +47,12 @@ export default function Home() {
 
       <div className="max-w-5xl mx-auto px-4 py-8">
         {/* Tabs */}
-        <div className="flex space-x-1 mb-4">
+        <div className="flex space-x-1 mb-4 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
           {(['policy', 'impact', 'aggregate'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-6 py-3 rounded-t-lg font-semibold transition-colors ${
+              className={`px-6 py-3 rounded-t-lg font-semibold transition-colors whitespace-nowrap shrink-0 ${
                 activeTab === tab
                   ? 'bg-white text-primary-600 border-t-4 border-primary-500'
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -123,17 +123,27 @@ const EXAMPLE_HOUSEHOLDS = [
 
 /** Household impact tab — includes inline household config */
 function HouseholdImpactTab() {
-  const [ageHead, setAgeHead] = useState(35);
-  const [ageSpouse, setAgeSpouse] = useState<number | null>(null);
-  const [married, setMarried] = useState(false);
-  const [dependentAges, setDependentAges] = useState<number[]>([3]);
-  const [income, setIncome] = useState(40000);
-  const [stateCode, setStateCode] = useState('CA');
-  const [inNyc, setInNyc] = useState(false);
+  const defaultExample = EXAMPLE_HOUSEHOLDS[0];
+  const [ageHead, setAgeHead] = useState(defaultExample.ageHead);
+  const [ageSpouse, setAgeSpouse] = useState<number | null>(defaultExample.ageSpouse);
+  const [married, setMarried] = useState(defaultExample.married);
+  const [dependentAges, setDependentAges] = useState<number[]>([...defaultExample.dependentAges]);
+  const [income, setIncome] = useState(defaultExample.income);
+  const [stateCode, setStateCode] = useState(defaultExample.stateCode);
+  const [inNyc, setInNyc] = useState(defaultExample.inNyc);
   const [maxEarnings, setMaxEarnings] = useState(200000);
-  const [triggered, setTriggered] = useState(false);
-  const [submittedRequest, setSubmittedRequest] = useState<HouseholdRequest | null>(null);
-  const [activeExampleId, setActiveExampleId] = useState<string | null>(null);
+  const [triggered, setTriggered] = useState(true);
+  const [submittedRequest, setSubmittedRequest] = useState<HouseholdRequest | null>({
+    age_head: defaultExample.ageHead,
+    age_spouse: defaultExample.married ? defaultExample.ageSpouse : null,
+    dependent_ages: defaultExample.dependentAges,
+    income: defaultExample.income,
+    year: 2026,
+    max_earnings: 200000,
+    state_code: defaultExample.stateCode,
+    in_nyc: defaultExample.inNyc,
+  });
+  const [activeExampleId, setActiveExampleId] = useState<string | null>(defaultExample.id);
 
   const handleMarriedChange = (value: boolean) => {
     setMarried(value);

@@ -41,3 +41,12 @@ body {
   color: var(--pe-color-text-primary);
   background-color: var(--pe-color-bg-secondary);
 }
+
+/* Hide scrollbar for horizontal-scroll pill containers on mobile */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
