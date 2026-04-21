@@ -83,6 +83,7 @@ export default function AggregateImpact({ triggered }: Props) {
   const [scoringMode, setScoringMode] = useState<'static' | 'dynamic'>('static');
   const { data, isLoading, error } = useAggregateImpact(triggered, scoringMode, selectedYear);
   const [activeSection, setActiveSection] = useState<'fiscal' | 'distributional' | 'winners' | 'poverty' | 'inequality'>('fiscal');
+  const [fiscalView, setFiscalView] = useState<'single' | 'ten_year'>('single');
   const [distMode, setDistMode] = useState<'relative' | 'absolute'>('relative');
 
   if (!triggered) return null;
@@ -212,43 +213,53 @@ export default function AggregateImpact({ triggered }: Props) {
       {/* ===== FISCAL IMPACT ===== */}
       {activeSection === 'fiscal' && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[
-              { label: 'Federal tax revenue', value: data.budget.federal_tax_revenue_impact },
-              { label: 'State/local tax revenue', value: data.budget.state_tax_revenue_impact },
-              { label: 'Benefit spending', value: -data.budget.benefit_spending_impact },
-              { label: 'Net budgetary impact', value: data.budget.budgetary_impact },
-            ].map(({ label, value }) => (
-              <div
-                key={label}
-                className={`rounded-lg p-6 border ${
-                  value >= 0 ? 'bg-green-50 border-success' : 'bg-red-50 border-red-300'
-                }`}
-              >
-                <p className="text-sm text-gray-700 mb-2">{label} ({selectedYear})</p>
-                <p className={`text-3xl font-bold ${
-                  value >= 0 ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {formatBillions(value)}
-                </p>
-              </div>
-            ))}
+          {/* Single-year vs 10-year toggle */}
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <h3 className="text-lg font-semibold text-gray-800">
+              {fiscalView === 'single' ? `Single-year impact (${selectedYear})` : '10-year impact (2026-2035)'}
+            </h3>
+            <div className="flex gap-1">
+              {([
+                { key: 'single' as const, label: `${selectedYear}` },
+                { key: 'ten_year' as const, label: '10-Year' },
+              ]).map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => setFiscalView(key)}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                    fiscalView === key
+                      ? 'bg-primary-500 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[
-              { label: 'Federal tax revenue', value: data.ten_year_budget.federal_tax_revenue_impact },
-              { label: 'State/local tax revenue', value: data.ten_year_budget.state_tax_revenue_impact },
-              { label: 'Benefit spending', value: -data.ten_year_budget.benefit_spending_impact },
-              { label: 'Net budgetary impact', value: data.ten_year_budget.budgetary_impact },
-            ].map(({ label, value }) => (
+            {(fiscalView === 'single'
+              ? [
+                  { label: 'Federal tax revenue', value: data.budget.federal_tax_revenue_impact },
+                  { label: 'State/local tax revenue', value: data.budget.state_tax_revenue_impact },
+                  { label: 'Benefit spending', value: -data.budget.benefit_spending_impact },
+                  { label: 'Net budgetary impact', value: data.budget.budgetary_impact },
+                ]
+              : [
+                  { label: 'Federal tax revenue', value: data.ten_year_budget.federal_tax_revenue_impact },
+                  { label: 'State/local tax revenue', value: data.ten_year_budget.state_tax_revenue_impact },
+                  { label: 'Benefit spending', value: -data.ten_year_budget.benefit_spending_impact },
+                  { label: 'Net budgetary impact', value: data.ten_year_budget.budgetary_impact },
+                ]
+            ).map(({ label, value }) => (
               <div
                 key={label}
                 className={`rounded-lg p-6 border ${
                   value >= 0 ? 'bg-green-50 border-success' : 'bg-red-50 border-red-300'
                 }`}
               >
-                <p className="text-sm text-gray-700 mb-2">{label} (2026-2035)</p>
+                <p className="text-sm text-gray-700 mb-2">{label}</p>
                 <p className={`text-3xl font-bold ${
                   value >= 0 ? 'text-green-600' : 'text-red-600'
                 }`}>
@@ -288,6 +299,15 @@ export default function AggregateImpact({ triggered }: Props) {
                 </tbody>
               </table>
             </div>
+            <details className="mt-4 text-sm text-gray-600">
+              <summary className="cursor-pointer font-medium text-gray-700 hover:text-gray-900">Methodology note</summary>
+              <p className="mt-2 leading-relaxed">
+                Income brackets are based on Adjusted Gross Income (AGI), a tax-unit-level concept mapped to the household level.
+                Households with negative AGI are grouped into the &ldquo;Under $50k&rdquo; bracket. The impact shown is the change
+                in household net income (after taxes and benefits), and only households whose net income changes by more than $1
+                in absolute terms are included in the table.
+              </p>
+            </details>
           </div>
         </div>
       )}

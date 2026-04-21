@@ -361,7 +361,7 @@ def calculate_aggregate_impact(
     weight_arr = np.array(sim_reform.calculate("household_weight", period=year))
 
     income_brackets = [
-        (0, 50_000, "Under $50k"),
+        (float("-inf"), 50_000, "Under $50k"),
         (50_000, 100_000, "$50k-$100k"),
         (100_000, 200_000, "$100k-$200k"),
         (200_000, 500_000, "$200k-$500k"),
