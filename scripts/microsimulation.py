@@ -19,6 +19,10 @@ from policyengine.outputs.change_aggregate import (
     ChangeAggregate,
     ChangeAggregateType,
 )
+from policyengine.outputs.inequality import (
+    USInequalityPreset,
+    calculate_us_inequality,
+)
 from policyengine.outputs.poverty import calculate_us_poverty_rates
 from policyengine.tax_benefit_models.us import (
     ensure_datasets,
@@ -130,19 +134,6 @@ def _household_net_income_change(baseline_sim, reform_sim):
     return baseline_income, reform_income, income_change
 
 
-def _inequality_from_analysis(inequality) -> dict:
-    return dict(
-        baseline=float(inequality.baseline.gini) if hasattr(inequality, "baseline") else float(inequality.gini),
-    )
-
-
-def _poverty_rate_pair(baseline_poverty, reform_poverty, poverty_type: str) -> tuple[float, float]:
-    """Look up baseline/reform rate for a given ``poverty_type`` (e.g. 'spm')."""
-    b = next(p for p in baseline_poverty.outputs if p.poverty_type == poverty_type)
-    r = next(p for p in reform_poverty.outputs if p.poverty_type == poverty_type)
-    return float(b.rate), float(r.rate)
-
-
 def _poverty_metrics(baseline_rate: float, reform_rate: float) -> tuple[float, float]:
     rate_change = reform_rate - baseline_rate
     percent_change = (
@@ -151,8 +142,8 @@ def _poverty_metrics(baseline_rate: float, reform_rate: float) -> tuple[float, f
     return rate_change, percent_change
 
 
-def _poverty_by_age(sim, age_geq: int | None = None, age_leq: int | None = None):
-    """Return ``{poverty_type: rate}`` for an age-filtered subset."""
+def _poverty_by_age(sim, *, age_geq: int | None = None, age_leq: int | None = None):
+    """Return ``{poverty_type: rate}`` from policyengine.py's helper."""
     kwargs = {"filter_variable": "age"}
     if age_geq is not None:
         kwargs["filter_variable_geq"] = age_geq
@@ -239,47 +230,20 @@ def _compute_decile_impact(baseline_sim, reform_sim) -> tuple[dict, dict]:
 
 
 def _compute_inequality(sim) -> tuple[float, float, float]:
-    """Gini, top-10%, top-1% shares on equivalised household net income."""
-    hh = sim.output_dataset.data.household
-    equiv = np.asarray(hh["household_net_income"].values) / np.sqrt(
-        np.maximum(np.asarray(hh["household_count_people"].values), 1)
+    """Gini, top-10%, top-1% shares via policyengine.py's CBO-comparable preset.
+
+    ``USInequalityPreset.CBO_COMPARABLE`` equivalises by household size
+    (power 0.5) and weights by household_weight × household_count_people,
+    matching the approach used in policyengine-app / api.
+    """
+    inequality = calculate_us_inequality(
+        sim, preset=USInequalityPreset.CBO_COMPARABLE
     )
-    equiv = np.maximum(equiv, 0)
-    people = np.asarray(hh["household_count_people"].values) * np.asarray(
-        hh["household_weight"].values
+    return (
+        float(inequality.gini),
+        float(inequality.top_10_share),
+        float(inequality.top_1_share),
     )
-
-    order = np.argsort(equiv)
-    equiv = equiv[order]
-    people = people[order]
-
-    total_people = people.sum()
-    if total_people == 0:
-        return 0.0, 0.0, 0.0
-
-    cum_people = np.cumsum(people)
-    cum_income = np.cumsum(equiv * people)
-    total_income = cum_income[-1]
-
-    if total_income == 0:
-        return 0.0, 0.0, 0.0
-
-    # Gini via weighted trapezoidal Lorenz
-    pop_frac = cum_people / total_people
-    inc_frac = cum_income / total_income
-    lorenz_prev = np.concatenate([[0.0], inc_frac[:-1]])
-    pop_prev = np.concatenate([[0.0], pop_frac[:-1]])
-    trap = ((inc_frac + lorenz_prev) / 2) * (pop_frac - pop_prev)
-    gini = float(1 - 2 * trap.sum())
-
-    # Top 10% / 1% shares
-    top10_cutoff = 0.9 * total_people
-    top1_cutoff = 0.99 * total_people
-    top10_idx = np.searchsorted(cum_people, top10_cutoff)
-    top1_idx = np.searchsorted(cum_people, top1_cutoff)
-    top10_share = float((total_income - cum_income[top10_idx - 1]) / total_income) if top10_idx > 0 else 1.0
-    top1_share = float((total_income - cum_income[top1_idx - 1]) / total_income) if top1_idx > 0 else 1.0
-    return gini, top10_share, top1_share
 
 
 def calculate_aggregate_impact(
