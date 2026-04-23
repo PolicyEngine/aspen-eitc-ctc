@@ -390,6 +390,36 @@ export default function PolicyOverview() {
         </div>
       </div>
 
+      {/* Model transparency */}
+      <div className="border-t pt-4 text-sm text-gray-600">
+        <p className="font-medium mb-1 text-gray-900">Model</p>
+        <p className="mb-2">
+          Calculations are produced by the open-source{' '}
+          <a
+            href="https://github.com/PolicyEngine/policyengine.py"
+            target="_blank"
+            rel="noreferrer"
+            className="text-primary-600 hover:underline"
+          >
+            policyengine
+          </a>{' '}
+          Python package (v4.3.0), which pins{' '}
+          <a
+            href="https://github.com/PolicyEngine/policyengine-us"
+            target="_blank"
+            rel="noreferrer"
+            className="text-primary-600 hover:underline"
+          >
+            policyengine-us
+          </a>{' '}
+          (v1.653.3). The household source is at{' '}
+          <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">
+            scripts/household_calculation.py
+          </code>
+          .
+        </p>
+      </div>
+
       {/* Sources */}
       <div className="border-t pt-4 text-sm text-gray-500">
         <p className="font-medium mb-1">Source</p>
