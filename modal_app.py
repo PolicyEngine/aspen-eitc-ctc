@@ -19,7 +19,7 @@ image = (
         "pydantic>=2.0",
         "httpx>=0.28.0",
         "tables>=3.10.2",
-        "git+https://github.com/PolicyEngine/policyengine-us.git",
+        "policyengine[us]==4.3.0",
     )
     .add_local_python_source("scripts", copy=True)
 )

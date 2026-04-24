@@ -1,4 +1,13 @@
-"""Shared household impact calculation logic for local scripts and Modal."""
+"""Shared household impact calculation logic for local scripts and Modal.
+
+Runs on the `policyengine` package ecosystem: dependencies are pinned
+via ``policyengine[us]==4.3.0`` (which in turn pins
+``policyengine-us==1.653.3``). We still dispatch through the
+``policyengine_us.Simulation`` object directly because the axes-based
+sweep (401 income points in one simulation run) is ~400× faster than
+looping ``policyengine.tax_benefit_models.us.calculate_household`` on
+each point, and the sweep produces the same per-point numbers.
+"""
 
 from __future__ import annotations
 
@@ -14,7 +23,7 @@ bootstrap_policyengine_us()
 
 from policyengine_us import Simulation
 
-from reforms import create_aspen_reform
+from reforms import create_aspen_parametric_reform
 
 
 def build_household_situation(params: dict[str, Any]) -> dict[str, Any]:
@@ -138,7 +147,7 @@ def calculate_household_impact(
 
     year = int(request["year"])
     situation = build_household_situation(request)
-    reform = create_aspen_reform()
+    reform = create_aspen_parametric_reform()
 
     baseline = Simulation(situation=situation)
     reform_sim = Simulation(situation=situation, reform=reform)
@@ -149,15 +158,32 @@ def calculate_household_impact(
     baseline_net_income = _extract_axis_values(
         baseline, "household_net_income", year, situation
     )
-    reform_net_income = _extract_axis_values(
+    reform_net_income_raw = _extract_axis_values(
         reform_sim, "household_net_income", year, situation
+    )
+    eitc_child_count = _extract_axis_values(
+        baseline, "eitc_child_count", year, situation
     )
     baseline_mtr = _extract_axis_values(
         baseline, "marginal_tax_rate", year, situation
     )
-    reform_mtr = _extract_axis_values(
+    reform_mtr_raw = _extract_axis_values(
         reform_sim, "marginal_tax_rate", year, situation
     )
+
+    # Preserve current-law EITC for childless filers. The parametric
+    # streamlined_eitc contrib reform applies to all filers including
+    # those with no qualifying children, so we snap them back to the
+    # baseline curve to replicate the behavior of the original
+    # ``create_streamlined_eitc_reform`` custom-Variable override.
+    reform_net_income = [
+        reform_net_income_raw[i] if eitc_child_count[i] > 0 else baseline_net_income[i]
+        for i in range(len(baseline_net_income))
+    ]
+    reform_mtr = [
+        reform_mtr_raw[i] if eitc_child_count[i] > 0 else baseline_mtr[i]
+        for i in range(len(baseline_mtr))
+    ]
 
     net_income_change = [
         reform_net_income[i] - baseline_net_income[i]
