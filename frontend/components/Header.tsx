@@ -11,7 +11,7 @@ import {
   colors,
   spacing,
   typography,
-} from '@policyengine/design-system';
+} from '@policyengine/ui-kit/legacy/tokens';
 
 const PE_LOGO_URL =
   'https://raw.githubusercontent.com/PolicyEngine/policyengine-app-v2/main/app/public/assets/logos/policyengine/white.svg';
