@@ -68,12 +68,25 @@ def _load_cached(year: int) -> dict | None:
     return None
 
 
+def _json_default(obj):
+    """Coerce numpy scalars/arrays to native Python types for json.dump."""
+    import numpy as np
+
+    if isinstance(obj, np.generic):
+        return obj.item()
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    raise TypeError(
+        f"Object of type {type(obj).__name__} is not JSON serializable"
+    )
+
+
 def _save_cache(year: int, result: dict) -> None:
     """Save a year's result to the cache."""
     os.makedirs(CACHE_DIR, exist_ok=True)
     path = _cache_path(year)
     with open(path, "w") as f:
-        json.dump(result, f)
+        json.dump(result, f, default=_json_default)
 
 
 def _normalize_cached_year_result(cached: dict | None) -> dict:
