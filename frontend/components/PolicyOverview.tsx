@@ -403,7 +403,7 @@ export default function PolicyOverview() {
           >
             policyengine
           </a>{' '}
-          Python package (v4.3.0).
+          Python package (v4.6.0).
         </p>
       </div>
 

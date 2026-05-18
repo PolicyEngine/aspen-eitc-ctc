@@ -14,8 +14,16 @@ def bootstrap_policyengine_us() -> str | None:
     1. ``POLICYENGINE_US_PATH`` environment variable
     2. sibling checkout at ``../policyengine-us``
 
+    Set ``POLICYENGINE_US_SKIP_BOOTSTRAP=1`` to force use of the
+    pip-installed package (needed when the pinned policyengine version
+    enforces a data-release manifest check and the sibling checkout
+    reports a non-matching version via importlib.metadata).
+
     Returns the resolved path if one was added, otherwise None.
     """
+
+    if os.getenv("POLICYENGINE_US_SKIP_BOOTSTRAP"):
+        return None
 
     script_dir = Path(__file__).resolve().parent
     repo_root = script_dir.parent
