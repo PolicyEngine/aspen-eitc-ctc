@@ -50,7 +50,7 @@ function calculateHousehold(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> {
   return policyengine.calculateHousehold(
-    { country: "us", household, ...(policy ? { policy } : {}) },
+    { country: "us", household, policy },
     { signal: AbortSignal.timeout(CALCULATION_TIMEOUT_MILLISECONDS) }
   );
 }
