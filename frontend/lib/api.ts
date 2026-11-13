@@ -1,12 +1,18 @@
+import { createPolicyEngineApiClient } from "@policyengine/api-client";
 import {
   HouseholdRequest,
   HouseholdImpactResponse,
 } from "./types";
 import { buildHouseholdSituation } from "./household";
 
-const PE_API_URL = "https://api.policyengine.org";
 const HOUSEHOLD_API_URL =
   process.env.NEXT_PUBLIC_HOUSEHOLD_API_URL || "";
+
+// Without a household backend, households are calculated through
+// www.policyengine.org's dashboard API, which forwards them to the
+// PolicyEngine Public API with PolicyEngine's credential.
+const policyengine = createPolicyEngineApiClient();
+const CALCULATION_TIMEOUT_MILLISECONDS = 120000;
 
 class ApiError extends Error {
   status: number;
@@ -36,30 +42,17 @@ async function fetchWithTimeout(
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function peCalculate(body: Record<string, any>): Promise<any> {
-  const response = await fetchWithTimeout(
-    `${PE_API_URL}/us/calculate`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    }
+/** Calculates a US household under current law, or under a reform. */
+function calculateHousehold(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  household: Record<string, any>,
+  policy?: Record<string, Record<string, number | boolean>>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Promise<any> {
+  return policyengine.calculateHousehold(
+    { country: "us", household, policy },
+    { signal: AbortSignal.timeout(CALCULATION_TIMEOUT_MILLISECONDS) }
   );
-  if (!response.ok) {
-    let errorBody;
-    try {
-      errorBody = await response.json();
-    } catch {
-      errorBody = await response.text();
-    }
-    throw new ApiError(
-      `PE API error: ${response.status}`,
-      response.status,
-      errorBody
-    );
-  }
-  return response.json();
 }
 
 /**
@@ -244,25 +237,25 @@ export const api = {
 
     // Run baseline and reform in parallel
     const [baselineResult, reformResult] = await Promise.all([
-      peCalculate({ household }),
-      peCalculate({ household, policy }),
+      calculateHousehold(household),
+      calculateHousehold(household, policy),
     ]);
 
     // Extract net income arrays
     const baselineNetIncome: number[] =
-      baselineResult.result.households["your household"]["household_net_income"][yearStr];
+      baselineResult.households["your household"]["household_net_income"][yearStr];
     const reformNetIncome: number[] =
-      reformResult.result.households["your household"]["household_net_income"][yearStr];
+      reformResult.households["your household"]["household_net_income"][yearStr];
 
     // Extract employment income x-axis values (person-level variable)
     const incomeRange: number[] =
-      baselineResult.result.people["you"]["employment_income"][yearStr];
+      baselineResult.people["you"]["employment_income"][yearStr];
     const eitcChildCount: number[] =
-      baselineResult.result.tax_units["your tax unit"]["eitc_child_count"][yearStr];
+      baselineResult.tax_units["your tax unit"]["eitc_child_count"][yearStr];
     const baselineMTRRaw: number[] | undefined =
-      baselineResult.result.people["you"]["marginal_tax_rate"]?.[yearStr];
+      baselineResult.people["you"]["marginal_tax_rate"]?.[yearStr];
     const reformMTRRaw: number[] | undefined =
-      reformResult.result.people["you"]["marginal_tax_rate"]?.[yearStr];
+      reformResult.people["you"]["marginal_tax_rate"]?.[yearStr];
 
     const baselineMTR =
       baselineMTRRaw ?? computeMTRFallback(baselineNetIncome, incomeRange);

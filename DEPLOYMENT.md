@@ -41,3 +41,10 @@ Optional local env:
 ```bash
 cp .env.example .env.local
 ```
+
+With `NEXT_PUBLIC_HOUSEHOLD_API_URL` empty, the calculator sends each household to
+www.policyengine.org's dashboard API (`@policyengine/api-client`) instead of the Modal
+backend; it needs no credential. That API answers pages on `http://localhost` and
+`http://127.0.0.1` only, so open the dev server there rather than on its network address.
+It allows 30 household calculations a minute per IP address, and each calculation here
+sends two (current law and the reform).
